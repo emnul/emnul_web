@@ -27,5 +27,8 @@ __screenshots__/
 .vitest-attachments/
 .vitest/
 
+# Local scratch notes, never committed
+tmp/
+
 # OS / editor
 .DS_Store
