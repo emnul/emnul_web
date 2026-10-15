@@ -9,7 +9,10 @@ const isVitest = process.env.VITEST !== undefined;
 
 export default defineConfig({
   site: "https://emnul.dev",
-  adapter: isVitest ? undefined : cloudflare(),
+  // Nothing persists across navigation (ADR 0001), so skip the adapter's default KV session binding.
+  session: false,
+  // Optimize images at build time (ADR 0005) instead of through the Cloudflare Images binding.
+  adapter: isVitest ? undefined : cloudflare({ imageService: "compile" }),
   integrations: [react(), mdx()],
   vite: {
     plugins: [tailwindcss()],
