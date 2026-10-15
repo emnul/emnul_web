@@ -20,7 +20,7 @@ bunx playwright install --only-shell webkit chromium
 
 Unit tests match `*.test.ts`; browser tests match `*.browser.test.ts` and are left out of the unit run, so `bun run test` never needs the browsers.
 
-Local secrets go in `.dev.vars`, which git ignores; `.env.example` lists their names.
+Local secrets go in `.dev.vars`, which git ignores.
 
 See [ADR 0004](docs/adr/0004-public-repo-licensing.md) (repo and licences), [ADR 0005](docs/adr/0005-bun-package-manager-node-tooling.md) (Bun and Node) and [ADR 0006](docs/adr/0006-workerd-parity-and-preview-gate.md) (workerd parity and the Preview gate).
 
