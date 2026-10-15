@@ -12,5 +12,5 @@ Licences: site code MIT; Shaders CC BY-NC-SA 4.0 by default (Shadertoy norms), o
 ## Consequences
 
 - Drafts are publicly readable in the repo as soon as they're pushed. Anything that must stay private stays on unpushed branches or outside the repo.
-- Secrets never enter git: `.dev.vars` and `.env*` are ignored from the first commit, the GitHub token lives only in Workers secrets, and GitHub secret scanning with push protection is on.
+- Secrets never enter git: `.dev.vars` and `.env*` are ignored before any secret could be committed, the GitHub token lives only in Workers secrets, and GitHub secret scanning with push protection is on.
 - The code is visible as a portfolio artifact, so the renderer doesn't need extracting into its own repo for that reason.
