@@ -8,21 +8,25 @@ Bun installs, Node runs (ADR 0005). Bun is the package manager and script runner
 
 `bun run dev` keeps the Cloudflare adapter's default `@cloudflare/vite-plugin` setup, so server code and prerendering run in workerd locally (ADR 0006). `nodejs_compat` is off in `wrangler.jsonc`.
 
+Every commit runs a Husky pre-commit hook: lint-staged formats staged files with Prettier and lints them with ESLint, then `bun run check` type checks the project. A formatting fix is folded into the commit; an ESLint or type error blocks it. `bun install` installs the hook through the `prepare` script, which does nothing when `HUSKY=0` is set (as in Workers Builds) or there's no `.git`.
+
 Local secrets go in `.dev.vars`, which git ignores; `.env.example` lists their names.
 
 See [ADR 0004](docs/adr/0004-public-repo-licensing.md) (repo and licences), [ADR 0005](docs/adr/0005-bun-package-manager-node-tooling.md) (Bun and Node) and [ADR 0006](docs/adr/0006-workerd-parity-and-preview-gate.md) (workerd parity and the Preview gate).
 
 ## Scripts
 
-| Script            | What it does                                    |
-| ----------------- | ----------------------------------------------- |
-| `bun install`     | Install dependencies                            |
-| `bun run dev`     | Dev server, with server code running in workerd |
-| `bun run build`   | Build Workers deployment output into `dist/`    |
-| `bun run preview` | Serve the build locally                         |
-| `bun run check`   | Type check with `astro check`                   |
-| `bun run lint`    | ESLint                                          |
-| `bun run test`    | Vitest unit tests                               |
+| Script                 | What it does                                    |
+| ---------------------- | ----------------------------------------------- |
+| `bun install`          | Install dependencies                            |
+| `bun run dev`          | Dev server, with server code running in workerd |
+| `bun run build`        | Build Workers deployment output into `dist/`    |
+| `bun run preview`      | Serve the build locally                         |
+| `bun run check`        | Type check with `astro check`                   |
+| `bun run lint`         | ESLint                                          |
+| `bun run format`       | Format the tree with Prettier                   |
+| `bun run format:check` | Check formatting without writing                |
+| `bun run test`         | Vitest unit tests                               |
 
 ## Licences
 
