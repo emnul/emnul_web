@@ -1,0 +1,7 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "emnul-web",
+  "compatibility_date": "2026-10-01",
+  // nodejs_compat stays off until a dependency needs it; record the reason when it's turned on (ADR 0006).
+  "compatibility_flags": []
+}

@@ -1,1 +1,30 @@
 .claude/settings.local.json
+
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+.astro/
+
+# Cloudflare / wrangler local state
+.wrangler/
+
+# Secrets: never commit (ADR 0004). Only the example file with placeholder names is tracked.
+.dev.vars
+.dev.vars.*
+.env
+.env.*
+!.env.example
+
+# Test artifacts
+coverage/
+test-results/
+playwright-report/
+blob-report/
+playwright/.cache/
+__screenshots__/
+.vitest-attachments/
+
+# OS / editor
+.DS_Store
