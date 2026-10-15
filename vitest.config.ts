@@ -2,7 +2,11 @@
 import { playwright } from "@vitest/browser-playwright";
 import { getViteConfig } from "astro/config";
 
-const allTests = ["src/**/*.test.ts", "test/**/*.test.ts"];
+// `!(*.browser)` keeps browser tests out of the unit glob itself, so no exclude is needed.
+const unitTests = [
+  "src/**/!(*.browser).test.ts",
+  "test/**/!(*.browser).test.ts",
+];
 const browserTests = ["src/**/*.browser.test.ts", "test/**/*.browser.test.ts"];
 
 // Both projects extend this config, so they share the site's Vite pipeline.
@@ -12,7 +16,7 @@ export default getViteConfig({
     projects: [
       {
         extends: true,
-        test: { name: "unit", include: allTests, exclude: browserTests },
+        test: { name: "unit", include: unitTests },
       },
       {
         extends: true,
