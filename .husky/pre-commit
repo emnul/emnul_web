@@ -1,2 +1,3 @@
+# Sequential: the Prettier and ESLint globs overlap, so parallel tasks would race on the same file.
 bunx lint-staged --concurrent false
 bun run check
