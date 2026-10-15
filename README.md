@@ -14,15 +14,15 @@ See [ADR 0004](docs/adr/0004-public-repo-licensing.md) (repo and licences), [ADR
 
 ## Scripts
 
-| Script | What it does |
-| --- | --- |
-| `bun install` | Install dependencies |
-| `bun run dev` | Dev server, with server code running in workerd |
-| `bun run build` | Build Workers deployment output into `dist/` |
-| `bun run preview` | Serve the build locally |
-| `bun run check` | Type check with `astro check` |
-| `bun run lint` | ESLint |
-| `bun run test` | Vitest unit tests |
+| Script            | What it does                                    |
+| ----------------- | ----------------------------------------------- |
+| `bun install`     | Install dependencies                            |
+| `bun run dev`     | Dev server, with server code running in workerd |
+| `bun run build`   | Build Workers deployment output into `dist/`    |
+| `bun run preview` | Serve the build locally                         |
+| `bun run check`   | Type check with `astro check`                   |
+| `bun run lint`    | ESLint                                          |
+| `bun run test`    | Vitest unit tests                               |
 
 ## Licences
 
