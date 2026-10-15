@@ -1,0 +1,2 @@
+bunx lint-staged --concurrent false
+bun run check
