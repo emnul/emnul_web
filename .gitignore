@@ -25,6 +25,7 @@ blob-report/
 playwright/.cache/
 __screenshots__/
 .vitest-attachments/
+.vitest/
 
 # OS / editor
 .DS_Store
