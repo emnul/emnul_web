@@ -4,4 +4,6 @@
   "compatibility_date": "2026-10-01",
   // nodejs_compat stays off until a dependency needs it; record the reason when it's turned on (ADR 0006).
   "compatibility_flags": [],
+  // Each PR's Workers Builds Preview gets a workers.dev URL to review before merging (ADR 0006).
+  "preview_urls": true,
 }
