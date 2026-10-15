@@ -1,0 +1,2 @@
+# Unit tests first: they are fast and need no browsers. Browser tests run only here, never in Workers Builds (ADR 0005).
+bun run test && bun run test:browser

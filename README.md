@@ -10,6 +10,16 @@ Bun installs, Node runs (ADR 0005). Bun is the package manager and script runner
 
 Every commit runs a Husky pre-commit hook: lint-staged formats staged files with Prettier and lints them with ESLint, then `bun run check` type checks the project. A formatting fix is folded into the commit; an ESLint or type error blocks it. `bun install` installs the hook through the `prepare` script, which does nothing when `HUSKY=0` is set (as in Workers Builds) or there's no `.git`.
 
+Every push runs a Husky pre-push hook: `bun run test` (unit), then `bun run test:browser` (Vitest browser mode on WebKit and Chromium, headless). A failing test in either blocks the push. Browser tests run only here, never in Workers Builds, which runs unit tests before `build` (ADR 0005).
+
+Browser tests need the two Playwright browsers. Install them once after cloning, and again after a Playwright upgrade (the hook fails with `Executable doesn't exist` when they're missing):
+
+```sh
+bunx playwright install --only-shell webkit chromium
+```
+
+Unit tests match `*.test.ts`; browser tests match `*.browser.test.ts` and are left out of the unit run, so `bun run test` never needs the browsers.
+
 Local secrets go in `.dev.vars`, which git ignores; `.env.example` lists their names.
 
 See [ADR 0004](docs/adr/0004-public-repo-licensing.md) (repo and licences), [ADR 0005](docs/adr/0005-bun-package-manager-node-tooling.md) (Bun and Node) and [ADR 0006](docs/adr/0006-workerd-parity-and-preview-gate.md) (workerd parity and the Preview gate).
@@ -27,6 +37,7 @@ See [ADR 0004](docs/adr/0004-public-repo-licensing.md) (repo and licences), [ADR
 | `bun run format`       | Format the tree with Prettier                   |
 | `bun run format:check` | Check formatting without writing                |
 | `bun run test`         | Vitest unit tests                               |
+| `bun run test:browser` | Vitest browser tests on WebKit and Chromium     |
 
 ## Licences
 
