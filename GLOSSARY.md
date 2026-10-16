@@ -42,6 +42,10 @@ _Avoid_: Poster, thumbnail, fallback image
 The Shadertoy-named values the site supplies to every Shader (`iResolution`, `iTime`, `iTimeDelta`, `iFrame`, `iMouse`, `iDate`).
 _Avoid_: Uniforms (in prose)
 
+**Parameter**:
+A named, bounded number a Shader declares, which a visitor adjusts with a slider; outside the site (such as on Shadertoy) it takes its default value.
+_Avoid_: Uniform, control, knob, setting
+
 ## Environments
 
 **Production**:
