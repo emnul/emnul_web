@@ -1,6 +1,6 @@
 import { expect, test } from "vitest";
 import drift from "../content/shaders/drift/shader.glsl?raw";
-import { prepareSource } from ".";
+import { prepareSource } from "./prepare-source";
 
 const vertexSource = `#version 300 es
 void main() {

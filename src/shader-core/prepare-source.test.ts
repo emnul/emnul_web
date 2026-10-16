@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { prepareSource } from ".";
+import { prepareSource } from "./prepare-source";
 
 const source = `void mainImage(out vec4 fragColor, in vec2 fragCoord) {
     vec2 uv = fragCoord / iResolution.xy;
@@ -20,6 +20,21 @@ test("each line of the author's source sits lineOffset lines further down the sh
 test("leaves the #version directive to the renderer", () => {
   // three.js puts its own `#version` and `#define` lines in front of a RawShaderMaterial (ADR 0007).
   expect(prepareSource(source).fragmentSource).not.toMatch(/^\s*#version/m);
+});
+
+test("ends with a main that passes mainImage the output colour and gl_FragCoord", () => {
+  const { fragmentSource, lineOffset } = prepareSource(source);
+  const afterSource = fragmentSource
+    .split("\n")
+    .slice(lineOffset + source.split("\n").length)
+    .join("\n");
+
+  const call =
+    /void main\(\) \{\s*mainImage\((\w+), gl_FragCoord\.xy\);\s*\}/.exec(
+      afterSource,
+    );
+  expect(call).not.toBeNull();
+  expect(fragmentSource.split("\n")).toContain(`out vec4 ${call?.[1]};`);
 });
 
 test("declares every Input with Shadertoy's type", () => {

@@ -1,5 +1,5 @@
 /**
- * A Shader turned into a GLSL ES 3.00 fragment shader, minus the `#version` directive, which the
+ * A Shader's GLSL source turned into a GLSL ES 3.00 fragment shader, minus the `#version` directive, which the
  * renderer supplies (ADR 0007). `lineOffset` is how many lines the core puts before the author's
  * source; the renderer adds whatever it puts in front before mapping driver lines to author lines.
  */
