@@ -1,6 +1,5 @@
 import { expect, test } from "vitest";
 import drift from "../content/shaders/drift/shader.glsl?raw";
-import { checkSource } from "./check-source";
 
 const vertexSource = `#version 300 es
 void main() {
@@ -22,9 +21,8 @@ function compile(gl: WebGL2RenderingContext, type: GLenum, source: string) {
   return shader;
 }
 
-test("a Shader that passes checkSource compiles and links in WebGL2", () => {
-  expect(checkSource(drift, []).errors).toEqual([]);
-
+// The build checks the seed Shader against its frontmatter; this shows that what passes compiles.
+test("the seed Shader compiles and links in WebGL2", () => {
   const gl = document.createElement("canvas").getContext("webgl2");
   if (!gl) throw new Error("getContext('webgl2') returned null");
 

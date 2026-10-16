@@ -43,6 +43,12 @@ void main() { fragColor = vec4(1.0); }`;
   expect(checkSource(source, []).errors).toEqual([]);
 });
 
+test("a #version inside a comment is not a directive", () => {
+  expect(
+    checkSource(`/*\n#version 300 es\n*/\n${valid}`, parameters).errors,
+  ).toEqual([]);
+});
+
 test.each([
   {
     case: "a syntax error, at the author's line",
@@ -73,6 +79,36 @@ test.each([
     ),
     line: 9,
     message: /single-pass/,
+  },
+  {
+    case: "an integer sampler",
+    source: valid.replace(
+      "uniform int icon;",
+      "uniform int icon;\nuniform isampler2D tex;",
+    ),
+    line: 9,
+    message: /single-pass/,
+  },
+  {
+    case: "an array uniform",
+    source: valid.replace("uniform int icon;", "uniform int icon[3];"),
+    line: 8,
+    message: /"icon" must not be an array/,
+  },
+  {
+    case: "an array uniform declared on its type",
+    source: valid.replace("uniform int icon;", "uniform int[3] icon;"),
+    line: 8,
+    message: /"icon" must not be an array/,
+  },
+  {
+    case: "a uniform block",
+    source: valid.replace(
+      "uniform int icon;",
+      "uniform int icon;\nuniform Extra { float speed; };",
+    ),
+    line: 9,
+    message: /Uniform block "Extra" isn't supported/,
   },
   {
     case: "an Input with the wrong type",

@@ -47,8 +47,8 @@ A named, typed value a Shader declares, which a visitor adjusts through its Cont
 _Avoid_: Uniform, knob, setting
 
 **Control**:
-The on-page widget a visitor uses to change one Parameter, such as a slider or a toggle; a Parameter's type decides its Control.
-_Avoid_: Widget, input
+The on-page widget a visitor uses to change one Parameter, such as a slider or a toggle;
+_Avoid_: input
 
 ## Environments
 

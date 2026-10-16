@@ -1,5 +1,5 @@
 import { getCollection, type CollectionEntry } from "astro:content";
-import { checkSource } from "../shader-core/check-source";
+import { assertShadersPass } from "./check-shaders";
 
 const sources = import.meta.glob<string>("/src/content/shaders/*/shader.glsl", {
   query: "?raw",
@@ -23,8 +23,8 @@ export function shaderSource(slug: CollectionEntry<"shaders">["id"]): string {
 
 /**
  * Every Shader, Drafts included, with its source, after checking each source against its
- * Parameters (ADR 0009). Throws on any problem, so `astro build` fails; filter Drafts out after
- * calling this, never before.
+ * Parameters (ADR 0009). Throws on any problem, so `astro build` fails. Drafts aren't filtered out
+ * yet (RED-35); when they are, filter after calling this, so Drafts are still checked.
  */
 export async function checkedShaders(): Promise<
   { shader: CollectionEntry<"shaders">; source: string }[]
@@ -33,15 +33,12 @@ export async function checkedShaders(): Promise<
     shader,
     source: shaderSource(shader.id),
   }));
-
-  const problems = shaders.flatMap(({ shader, source }) =>
-    checkSource(source, shader.data.parameters).errors.map(
-      ({ line, message }) =>
-        `src/content/shaders/${shader.id}/${line === undefined ? "index.mdx" : `shader.glsl:${line}`}: ${message}`,
-    ),
+  assertShadersPass(
+    shaders.map(({ shader, source }) => ({
+      slug: shader.id,
+      source,
+      parameters: shader.data.parameters,
+    })),
   );
-  if (problems.length > 0) {
-    throw new Error(`Shader check failed:\n${problems.join("\n")}`);
-  }
   return shaders;
 }
