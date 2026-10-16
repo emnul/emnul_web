@@ -1,0 +1,33 @@
+---
+import type { GetStaticPaths } from "astro";
+import { getCollection } from "astro:content";
+import { shaderSource } from "../../content/shader-source";
+import "../../styles/global.css";
+
+export const getStaticPaths = (async () => {
+  const shaders = await getCollection("shaders");
+  return shaders.map((shader) => ({
+    params: { slug: shader.id },
+    props: { shader, source: shaderSource(shader.id) },
+  }));
+}) satisfies GetStaticPaths;
+
+const { shader, source } = Astro.props;
+const { title, description } = shader.data;
+---
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title} · emnul.dev</title>
+    <meta name="description" content={description} />
+  </head>
+  <body>
+    <main class="prose mx-auto p-8">
+      <h1>{title}</h1>
+      <p>{description}</p>
+      <pre><code class="language-glsl">{source}</code></pre>
+    </main>
+  </body>
+</html>
