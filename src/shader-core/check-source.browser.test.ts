@@ -1,6 +1,6 @@
 import { expect, test } from "vitest";
 import drift from "../content/shaders/drift/shader.glsl?raw";
-import { prepareSource } from "./prepare-source";
+import { checkSource } from "./check-source";
 
 const vertexSource = `#version 300 es
 void main() {
@@ -22,7 +22,9 @@ function compile(gl: WebGL2RenderingContext, type: GLenum, source: string) {
   return shader;
 }
 
-test("a Shader's prepared source compiles and links in WebGL2", () => {
+test("a Shader that passes checkSource compiles and links in WebGL2", () => {
+  expect(checkSource(drift, []).errors).toEqual([]);
+
   const gl = document.createElement("canvas").getContext("webgl2");
   if (!gl) throw new Error("getContext('webgl2') returned null");
 
@@ -30,12 +32,8 @@ test("a Shader's prepared source compiles and links in WebGL2", () => {
   gl.attachShader(program, compile(gl, gl.VERTEX_SHADER, vertexSource));
   gl.attachShader(
     program,
-    // The renderer supplies `#version`, as three.js does for a RawShaderMaterial (ADR 0007).
-    compile(
-      gl,
-      gl.FRAGMENT_SHADER,
-      `#version 300 es\n${prepareSource(drift).fragmentSource}`,
-    ),
+    // The renderer supplies `#version`, as three.js does for a RawShaderMaterial (ADR 0010).
+    compile(gl, gl.FRAGMENT_SHADER, `#version 300 es\n${drift}`),
   );
   gl.linkProgram(program);
 

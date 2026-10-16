@@ -1,14 +1,13 @@
 ---
 import type { GetStaticPaths } from "astro";
-import { getCollection } from "astro:content";
-import { shaderSource } from "../../content/shader-source";
+import { checkedShaders } from "../../content/shader-source";
 import "../../styles/global.css";
 
 export const getStaticPaths = (async () => {
-  const shaders = await getCollection("shaders");
-  return shaders.map((shader) => ({
+  const shaders = await checkedShaders();
+  return shaders.map(({ shader, source }) => ({
     params: { slug: shader.id },
-    props: { shader, source: shaderSource(shader.id) },
+    props: { shader, source },
   }));
 }) satisfies GetStaticPaths;
 
