@@ -30,7 +30,12 @@ test("a Shader's prepared source compiles and links in WebGL2", () => {
   gl.attachShader(program, compile(gl, gl.VERTEX_SHADER, vertexSource));
   gl.attachShader(
     program,
-    compile(gl, gl.FRAGMENT_SHADER, prepareSource(drift).fragmentSource),
+    // The renderer supplies `#version`, as three.js does for a RawShaderMaterial (ADR 0007).
+    compile(
+      gl,
+      gl.FRAGMENT_SHADER,
+      `#version 300 es\n${prepareSource(drift).fragmentSource}`,
+    ),
   );
   gl.linkProgram(program);
 

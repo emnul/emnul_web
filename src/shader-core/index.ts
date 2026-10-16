@@ -1,6 +1,7 @@
 /**
- * A Shader turned into a complete GLSL ES 3.00 fragment shader. `lineOffset` is how many lines
- * precede the author's source, so driver line N is author line N - lineOffset.
+ * A Shader turned into a GLSL ES 3.00 fragment shader, minus the `#version` directive, which the
+ * renderer supplies (ADR 0007). `lineOffset` is how many lines the core puts before the author's
+ * source; the renderer adds whatever it puts in front before mapping driver lines to author lines.
  */
 export interface PreparedSource {
   fragmentSource: string;
@@ -9,7 +10,6 @@ export interface PreparedSource {
 
 // Declares the Inputs with Shadertoy's names and types, so Shadertoy sources compile unchanged.
 const header = [
-  "#version 300 es",
   "precision highp float;",
   "precision highp int;",
   "uniform vec3 iResolution;",
@@ -27,7 +27,7 @@ const footer = [
   "}",
 ];
 
-/** Wraps a Shadertoy-contract `mainImage` source (ADR 0003) into a complete fragment shader. */
+/** Wraps a Shadertoy-contract `mainImage` source (ADR 0003) into a fragment shader. */
 export function prepareSource(source: string): PreparedSource {
   return {
     // `source` is joined as one item, so a missing trailing newline can't fuse it with `main`.

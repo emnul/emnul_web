@@ -17,6 +17,11 @@ test("each line of the author's source sits lineOffset lines further down the sh
   });
 });
 
+test("leaves the #version directive to the renderer", () => {
+  // three.js puts its own `#version` and `#define` lines in front of a RawShaderMaterial (ADR 0007).
+  expect(prepareSource(source).fragmentSource).not.toMatch(/^\s*#version/m);
+});
+
 test("declares every Input with Shadertoy's type", () => {
   const { fragmentSource } = prepareSource(source);
 
