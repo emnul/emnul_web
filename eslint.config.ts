@@ -6,7 +6,7 @@ import globals from "globals";
 import tseslint from "typescript-eslint";
 
 export default defineConfig(
-  globalIgnores(["dist/", ".astro/", ".wrangler/", "node_modules/"]),
+  globalIgnores(["dist/", ".astro/", ".wrangler/", "node_modules/", "tmp/"]),
   js.configs.recommended,
   tseslint.configs.strict,
   astro.configs.recommended,
@@ -21,5 +21,17 @@ export default defineConfig(
   {
     files: ["*.config.ts", "test/**"],
     languageOptions: { globals: globals.node },
+  },
+  {
+    rules: {
+      "no-restricted-syntax": [
+        "error",
+        {
+          selector: "BinaryExpression[operator='in'][left.type!='Literal']",
+          message:
+            "Use Object.hasOwn(object, key): `in` also matches inherited keys such as toString.",
+        },
+      ],
+    },
   },
 );
