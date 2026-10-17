@@ -7,7 +7,7 @@ export const inputs = { u_resolution: "vec2", u_time: "float" } as const;
 const parameterName = z
   .string()
   .regex(/^[A-Za-z_][A-Za-z0-9_]*$/, "must be a GLSL identifier")
-  .refine((name) => !(name in inputs), "must not be an Input name");
+  .refine((name) => !Object.hasOwn(inputs, name), "must not be an Input name");
 
 /** Ties a Parameter type's `inRange` to the fields its schema produces. */
 function parameterType<Schema extends z.ZodType<{ type: string }>>(row: {

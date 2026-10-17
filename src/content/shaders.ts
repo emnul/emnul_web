@@ -5,7 +5,11 @@ import {
 } from "astro:content";
 import { z } from "astro/zod";
 import { checkSource } from "../shader-core/check-source";
-import { checkStillValues, parametersSchema } from "../shader-core/contract";
+import {
+  checkStillValues,
+  parametersSchema,
+  type Parameter,
+} from "../shader-core/contract";
 
 /**
  * One folder per Shader: `<slug>/index.mdx` holds the frontmatter and Write-up, `<slug>/shader.glsl`
@@ -59,24 +63,36 @@ const sources = import.meta.glob<string>("/src/content/shaders/*/shader.glsl", {
 
 /**
  * Every Shader, Drafts included, with its GLSL source as raw text, after checking each source
- * against its Parameters (ADR 0009). Throws one error listing every problem, each prefixed with
- * the file it's in, so a single `astro build` shows them all. Drafts aren't filtered out yet
- * (RED-35); when they are, filter after the check, so Drafts are still checked.
+ * against its Parameters (ADR 0009). Drafts aren't filtered out yet (RED-35); when they are,
+ * filter after the check, so Drafts are still checked.
  */
 export async function checkedShaders(): Promise<
   { shader: CollectionEntry<"shaders">; source: string }[]
 > {
-  const shaders: { shader: CollectionEntry<"shaders">; source: string }[] = [];
+  return checkShaderSources(await getCollection("shaders"), sources);
+}
+
+/**
+ * Pairs each Shader with its source in `sourcesByPath`, keyed as `import.meta.glob` keys each
+ * `shader.glsl`, and checks it. Throws one error listing every problem, each prefixed with the
+ * file it's in, so a single `astro build` shows them all.
+ */
+export function checkShaderSources<
+  Shader extends { id: string; data: { parameters: readonly Parameter[] } },
+>(
+  entries: readonly Shader[],
+  sourcesByPath: Readonly<Record<string, string>>,
+): { shader: Shader; source: string }[] {
+  const shaders: { shader: Shader; source: string }[] = [];
   const problems: string[] = [];
 
-  const entries = await getCollection("shaders");
   // The site always has a Shader, so none means the loader is looking in the wrong place.
   if (entries.length === 0) {
     throw new Error(`No Shaders found under ${folder}/`);
   }
 
   for (const shader of entries) {
-    const source = sources[`/${folder}/${shader.id}/shader.glsl`];
+    const source = sourcesByPath[`/${folder}/${shader.id}/shader.glsl`];
     if (source === undefined) {
       problems.push(
         `${folder}/${shader.id}/shader.glsl: missing; each Shader folder needs one`,
@@ -93,7 +109,7 @@ export async function checkedShaders(): Promise<
   }
 
   const slugs = new Set(shaders.map(({ shader }) => shader.id));
-  for (const path of Object.keys(sources)) {
+  for (const path of Object.keys(sourcesByPath)) {
     const slug = path.split("/").at(-2);
     if (slug !== undefined && !slugs.has(slug)) {
       problems.push(

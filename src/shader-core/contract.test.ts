@@ -49,6 +49,15 @@ test("a Parameter name must be a GLSL identifier and not an Input", () => {
   ]);
 });
 
+test("a Parameter may share a name with a built-in object property", () => {
+  expect(
+    issues([
+      { ...speed, name: "toString" },
+      { ...speed, name: "constructor" },
+    ]),
+  ).toEqual([]);
+});
+
 test("a number Parameter needs min below max and its default within them", () => {
   expect(
     issues([
