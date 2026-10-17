@@ -1,19 +1,10 @@
 import { expect, test } from "vitest";
+import drift from "../content/shaders/drift/shader.glsl?raw";
 
-// Proves the browser-test environment can run WebGL2 before the renderer exists:
-// a fullscreen triangle with a constant colour must compile and link.
 const vertexSource = `#version 300 es
 void main() {
   vec2 corner = vec2((gl_VertexID << 1) & 2, gl_VertexID & 2);
   gl_Position = vec4(corner * 2.0 - 1.0, 0.0, 1.0);
-}
-`;
-
-const fragmentSource = `#version 300 es
-precision highp float;
-out vec4 fragColor;
-void main() {
-  fragColor = vec4(1.0, 0.0, 1.0, 1.0);
 }
 `;
 
@@ -30,17 +21,18 @@ function compile(gl: WebGL2RenderingContext, type: GLenum, source: string) {
   return shader;
 }
 
-test("a WebGL2 context compiles and links a trivial program", () => {
+// The build checks the seed Shader against its frontmatter; this shows that what passes compiles.
+test("the seed Shader compiles and links in WebGL2", () => {
   const gl = document.createElement("canvas").getContext("webgl2");
   if (!gl) throw new Error("getContext('webgl2') returned null");
-  expect(gl).toBeInstanceOf(WebGL2RenderingContext);
-
-  const vertex = compile(gl, gl.VERTEX_SHADER, vertexSource);
-  const fragment = compile(gl, gl.FRAGMENT_SHADER, fragmentSource);
 
   const program = gl.createProgram();
-  gl.attachShader(program, vertex);
-  gl.attachShader(program, fragment);
+  gl.attachShader(program, compile(gl, gl.VERTEX_SHADER, vertexSource));
+  gl.attachShader(
+    program,
+    // The renderer supplies `#version`, as three.js does for a RawShaderMaterial (ADR 0010).
+    compile(gl, gl.FRAGMENT_SHADER, `#version 300 es\n${drift}`),
+  );
   gl.linkProgram(program);
 
   expect(

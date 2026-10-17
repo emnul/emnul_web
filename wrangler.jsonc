@@ -4,10 +4,12 @@
   "compatibility_date": "2026-10-01",
   // nodejs_compat stays off until a dependency needs it; record the reason when it's turned on (ADR 0006).
   "compatibility_flags": [],
-  // Each PR's Workers Builds Preview gets a workers.dev URL to review before merging (ADR 0006).
+  // The staging branch's Preview gets a workers.dev URL to review before it merges into main (ADR 0006).
   "preview_urls": true,
   // Production serves the apex only. A Custom Domain matches its exact hostname, so www.emnul.dev 301s here via a Cloudflare Redirect Rule (ADR 0002).
   "routes": [{ "pattern": "emnul.dev", "custom_domain": true }],
   // Explicit because routes flip Wrangler's default: Production gets no workers.dev copy, while Previews keep theirs via preview_urls.
   "workers_dev": false,
+  // Required by `wrangler preview`, which deploys the staging Preview from GitHub Actions (ADR 0006). Empty because Previews need no separate settings yet.
+  "previews": {},
 }
