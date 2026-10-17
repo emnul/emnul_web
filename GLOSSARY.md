@@ -57,7 +57,7 @@ The live site at emnul.dev, built from `main`.
 _Avoid_: Prod, live
 
 **Preview**:
-A deployment of any non-`main` branch at its own URL, used to review work before it reaches Production.
+A deployment of the `staging` branch at its own URL, used to review work before it reaches Production.
 _Avoid_: Staging
 
 ## Planned
