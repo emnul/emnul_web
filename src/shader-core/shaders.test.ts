@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import type { Parameter } from "../shader-core/contract";
+import type { Parameter } from "./contract";
 import { checkShaderSources } from "./shaders";
 
 const passing = `precision highp float;
@@ -84,7 +84,7 @@ test("reports a Shader with no shader.glsl alongside every other problem", () =>
       [
         "Shader check failed:",
         'src/content/shaders/drift/index.mdx: Parameter "scale" has no uniform; declare `uniform float scale;`',
-        "src/content/shaders/nope/shader.glsl: missing; each Shader folder needs one",
+        "src/content/shaders/nope/shader.glsl: missing; each Shader directory needs one",
       ].join("\n"),
     ),
   );

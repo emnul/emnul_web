@@ -1,3 +1,12 @@
+// The Shader contract (ADR 0009, ADR 0011): the Inputs the site supplies, and one row per
+// Parameter type giving its frontmatter schema, GLSL type and range. Pure data and Zod, with no
+// parser, so the browser can import it.
+//
+// Checks a Shader's frontmatter against itself:
+// - each Parameter's fields are valid for its type: a GLSL identifier name that isn't an Input,
+//   `min` below `max`, a `default` within range, and at least two `options`
+// - no two Parameters share a name
+// - a Still's values name this Shader's Parameters and lie within their ranges
 import { z } from "astro/zod";
 
 /** The Inputs and the GLSL type each must be declared with. */
@@ -103,25 +112,27 @@ export interface ParameterIssue {
  * and be a value it can take. Paths are the value's key.
  */
 export function checkStillValues(
-  parameters: readonly Parameter[],
-  values: Readonly<Record<string, number>>,
+  shaderParams: readonly Parameter[],
+  stillParams: Readonly<Record<string, number>>,
 ): ParameterIssue[] {
-  return Object.entries(values).flatMap(([name, value]) => {
-    const declared = parameters.find((p) => p.name === name);
+  return Object.entries(stillParams).flatMap(([stillName, stillValue]) => {
+    const declared = shaderParams.find(
+      (shaderParam) => shaderParam.name === stillName,
+    );
     if (!declared) {
       return [
         {
-          path: [name],
-          message: `"${name}" is not a Parameter of this Shader`,
+          path: [stillName],
+          message: `"${stillName}" is not a Parameter of this Shader`,
         },
       ];
     }
-    return inRange(declared, value)
+    return inRange(declared, stillValue)
       ? []
       : [
           {
-            path: [name],
-            message: `${value} is outside Parameter "${name}"'s range`,
+            path: [stillName],
+            message: `${stillValue} is outside Parameter "${stillName}"'s range`,
           },
         ];
   });

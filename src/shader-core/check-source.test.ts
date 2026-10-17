@@ -1,5 +1,16 @@
-import { expect, test } from "vitest";
+import { expect, test, vi } from "vitest";
+import { parser } from "@shaderfrog/glsl-parser";
 import { checkSource } from "./check-source";
+
+// The real parser, wrapped so a test can make it throw an error with no location.
+vi.mock("@shaderfrog/glsl-parser", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("@shaderfrog/glsl-parser")>();
+  return {
+    ...actual,
+    parser: { ...actual.parser, parse: vi.fn(actual.parser.parse) },
+  };
+});
 
 const valid = `precision highp float;
 
@@ -128,19 +139,33 @@ test.each([
 ])("reports $case", ({ source, line, message }) => {
   const { errors } = checkSource(source, parameters);
   expect(errors).toHaveLength(1);
-  expect(errors[0]?.line).toBe(line);
+  expect(errors[0]).toMatchObject({ file: "shader.glsl", line });
   expect(errors[0]?.message).toMatch(message);
 });
 
-test("reports a Parameter with no uniform, without a line", () => {
+test("reports a Parameter with no uniform in index.mdx", () => {
   const { errors } = checkSource(valid, [
     ...parameters,
     { name: "offset", type: "number" },
   ]);
   expect(errors).toEqual([
     {
+      file: "index.mdx",
       message:
         'Parameter "offset" has no uniform; declare `uniform float offset;`',
+    },
+  ]);
+});
+
+test("reports a syntax error with no location in shader.glsl, without a line", () => {
+  vi.mocked(parser.parse).mockImplementationOnce(() => {
+    throw new Error("Unexpected end of input");
+  });
+  expect(checkSource(valid, parameters).errors).toEqual([
+    {
+      file: "shader.glsl",
+      line: undefined,
+      message: "Unexpected end of input",
     },
   ]);
 });

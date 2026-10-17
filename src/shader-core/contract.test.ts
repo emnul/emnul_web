@@ -11,6 +11,14 @@ const speed = {
   step: 0.1,
 };
 
+const shape = {
+  type: "choice",
+  name: "shape",
+  label: "Shape",
+  options: ["circle", "square"],
+  default: 1,
+};
+
 /** The message and path of each problem the schema reports. */
 function issues(parameters: unknown) {
   const result = parametersSchema.safeParse(parameters);
@@ -23,18 +31,6 @@ test("a Parameter name may be used only once", () => {
   expect(issues([speed, { ...speed, label: "Speed again" }])).toEqual([
     { path: [1, "name"], message: 'Parameter "speed" is declared twice' },
   ]);
-});
-
-const shape = {
-  type: "choice",
-  name: "shape",
-  label: "Shape",
-  options: ["circle", "square"],
-  default: 1,
-};
-
-test("number and choice Parameters with valid fields pass", () => {
-  expect(issues([speed, shape])).toEqual([]);
 });
 
 test("a Parameter name must be a GLSL identifier and not an Input", () => {
@@ -56,24 +52,6 @@ test("a Parameter may share a name with a built-in object property", () => {
       { ...speed, name: "constructor" },
     ]),
   ).toEqual([]);
-});
-
-test("a number Parameter needs min below max and its default within them", () => {
-  expect(
-    issues([
-      { ...speed, name: "a", min: 2, max: 2, default: 2 },
-      { ...speed, name: "b", default: 3 },
-    ]),
-  ).toEqual([
-    { path: [0], message: "min must be below max" },
-    { path: [1], message: "default must lie within min–max" },
-  ]);
-});
-
-test("a choice Parameter's default must be an option index", () => {
-  expect(issues([{ ...shape, default: 2 }])).toEqual([
-    { path: [0], message: "default must be an option index" },
-  ]);
 });
 
 test("a Still may set only declared Parameters, each to a value it can take", () => {

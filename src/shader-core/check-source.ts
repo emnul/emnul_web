@@ -1,3 +1,9 @@
+// Checks a Shader's GLSL against its frontmatter (ADR 0009). The source is a string, so this
+// runs without Astro. Errors give the author's file and line:
+// - the source parses, and has no `#version`
+// - every uniform is an Input or one of the Shader's Parameters, declared with its GLSL type
+// - no samplers, uniform blocks or array uniforms
+// - every Parameter has a uniform
 import { parser } from "@shaderfrog/glsl-parser";
 import type {
   BaseNode,
@@ -12,8 +18,9 @@ export interface Uniform {
   line: number;
 }
 
-/** `line` is the author's line in `shader.glsl`; it's absent when the problem is in the frontmatter. */
+/** `line` is the author's line in `shader.glsl`; it's absent for `index.mdx`, and when the parser gives none. */
 export interface SourceError {
+  file: "shader.glsl" | "index.mdx";
   line?: number;
   message: string;
 }
@@ -57,16 +64,19 @@ export function checkSource(
     // Every sampler type, such as `isampler2D` and `samplerCube`.
     if (/^[iu]?sampler/.test(uniform.type)) {
       errors.push({
+        file: "shader.glsl",
         line: uniform.line,
         message: `Shaders are single-pass, so sampler uniform "${uniform.name}" has nothing to read`,
       });
     } else if (expected === undefined) {
       errors.push({
+        file: "shader.glsl",
         line: uniform.line,
         message: `Uniform "${uniform.name}" is neither an Input nor a Parameter in the frontmatter`,
       });
     } else if (uniform.type !== expected) {
       errors.push({
+        file: "shader.glsl",
         line: uniform.line,
         message: `Uniform "${uniform.name}" must be declared as ${expected}, not ${uniform.type}`,
       });
@@ -77,6 +87,7 @@ export function checkSource(
   for (const parameter of parameters) {
     if (!declared.has(parameter.name)) {
       errors.push({
+        file: "index.mdx",
         message: `Parameter "${parameter.name}" has no uniform; declare \`uniform ${parameterTypes[parameter.type].glsl} ${parameter.name};\``,
       });
     }
@@ -98,6 +109,7 @@ function declarations(program: Program): CheckedSource {
     if (statement.type === "preprocessor") {
       if (/^#\s*version\b/.test(statement.line)) {
         errors.push({
+          file: "shader.glsl",
           line: lineOf(statement),
           message: "Leave out #version; the renderer supplies it",
         });
@@ -110,6 +122,7 @@ function declarations(program: Program): CheckedSource {
     if (declaration.type === "interface_declarator") {
       if (isUniform(declaration.qualifiers)) {
         errors.push({
+          file: "shader.glsl",
           line: lineOf(declaration.interface_type),
           message: `Uniform block "${declaration.interface_type.identifier}" isn't supported; declare each Input or Parameter as its own uniform`,
         });
@@ -134,6 +147,7 @@ function declarations(program: Program): CheckedSource {
       // `null` for no quantifier, whatever its types say.
       if ((quantifier as typeof quantifier | null) || specifier.quantifier) {
         errors.push({
+          file: "shader.glsl",
           line,
           message: `Uniform "${identifier.identifier}" must not be an array`,
         });
@@ -163,5 +177,5 @@ function syntaxError(error: unknown): SourceError {
     ?.start?.line;
   const message =
     error instanceof Error ? (error.message.split("\n")[0] ?? "") : "";
-  return { line, message: message || "GLSL syntax error" };
+  return { file: "shader.glsl", line, message: message || "GLSL syntax error" };
 }
