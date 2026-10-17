@@ -1,12 +1,10 @@
-import {
-  checkSource,
-  type ParameterDeclaration,
-} from "../shader-core/check-source";
+import { checkSource } from "../shader-core/check-source";
+import type { Parameter } from "../shader-core/contract";
 
 export interface ShaderToCheck {
   slug: string;
   source: string;
-  parameters: readonly ParameterDeclaration[];
+  parameters: readonly Pick<Parameter, "name" | "type">[];
 }
 
 /**

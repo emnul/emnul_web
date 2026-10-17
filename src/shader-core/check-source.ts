@@ -4,17 +4,7 @@ import type {
   Program,
   TypeQualifiers,
 } from "@shaderfrog/glsl-parser/ast";
-
-/** The Inputs and the GLSL type each must be declared with. */
-export const inputs = { u_resolution: "vec2", u_time: "float" } as const;
-
-/** The GLSL type each Parameter type is declared with. */
-export const parameterGlslTypes = { number: "float", choice: "int" } as const;
-
-export interface ParameterDeclaration {
-  name: string;
-  type: keyof typeof parameterGlslTypes;
-}
+import { inputs, parameterTypes, type Parameter } from "./contract";
 
 export interface Uniform {
   name: string;
@@ -43,7 +33,7 @@ export interface CheckedSource {
  */
 export function checkSource(
   source: string,
-  parameters: readonly ParameterDeclaration[],
+  parameters: readonly Pick<Parameter, "name" | "type">[],
 ): CheckedSource {
   let program: Program;
   try {
@@ -59,7 +49,7 @@ export function checkSource(
 
   const expectedTypes = new Map<string, string>(Object.entries(inputs));
   for (const parameter of parameters) {
-    expectedTypes.set(parameter.name, parameterGlslTypes[parameter.type]);
+    expectedTypes.set(parameter.name, parameterTypes[parameter.type].glsl);
   }
 
   for (const uniform of uniforms) {
@@ -87,7 +77,7 @@ export function checkSource(
   for (const parameter of parameters) {
     if (!declared.has(parameter.name)) {
       errors.push({
-        message: `Parameter "${parameter.name}" has no uniform; declare \`uniform ${parameterGlslTypes[parameter.type]} ${parameter.name};\``,
+        message: `Parameter "${parameter.name}" has no uniform; declare \`uniform ${parameterTypes[parameter.type].glsl} ${parameter.name};\``,
       });
     }
   }

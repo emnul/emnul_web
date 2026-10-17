@@ -50,6 +50,10 @@ _Avoid_: Uniform, knob, setting
 The on-page widget a visitor uses to change one Parameter, such as a slider or a toggle;
 _Avoid_: input
 
+**Shader contract**:
+What a Shader may rely on and declare: the Inputs the site supplies, and the Parameter types it may use, each with its GLSL type and Control.
+_Avoid_: Spec, interface
+
 ## Environments
 
 **Production**:
