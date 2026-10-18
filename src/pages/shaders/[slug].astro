@@ -17,12 +17,12 @@ const { shader, source, still } = Astro.props;
 const { title, description } = shader.data;
 const stillAlt = `Still frame of the ${title} Shader`;
 // Link previews want an absolute URL, and JPEG works on every platform that shows one.
-const preview = await getImage({
+const ogImage = await getImage({
   src: still,
   width: 1200,
   format: "jpg",
 });
-const previewUrl = new URL(preview.src, Astro.site).href;
+const ogImageUrl = new URL(ogImage.src, Astro.site).href;
 ---
 
 <html lang="en">
@@ -35,14 +35,14 @@ const previewUrl = new URL(preview.src, Astro.site).href;
     <meta property="og:url" content={Astro.url.href} />
     <meta property="og:title" content={title} />
     <meta property="og:description" content={description} />
-    <meta property="og:image" content={previewUrl} />
+    <meta property="og:image" content={ogImageUrl} />
     <meta
       property="og:image:width"
-      content={String(preview.attributes.width)}
+      content={String(ogImage.attributes.width)}
     />
     <meta
       property="og:image:height"
-      content={String(preview.attributes.height)}
+      content={String(ogImage.attributes.height)}
     />
     <meta property="og:image:alt" content={stillAlt} />
     <meta name="twitter:card" content="summary_large_image" />

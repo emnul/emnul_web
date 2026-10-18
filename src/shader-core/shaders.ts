@@ -38,8 +38,6 @@ export const shaderSchema = z
     // CC BY-NC-SA by default (ADR 0004); `attribution` credits the source of adapted work.
     license: z.string().default("CC BY-NC-SA 4.0"),
     attribution: z.string().optional(),
-    // Caps the device pixel ratio for heavy Shaders (ADR 0010).
-    maxPixelRatio: z.number().positive().optional(),
   })
   .superRefine((shader, ctx) => {
     for (const issue of checkStillValues(
@@ -65,16 +63,19 @@ const stills = import.meta.glob<ImageMetadata>(
   { import: "default", eager: true },
 );
 
+/** A Shader paired with its GLSL source as raw text and its Still, once both have been checked. */
+export interface CheckedShader<Shader, Still> {
+  shader: Shader;
+  source: string;
+  still: Still;
+}
+
 /**
  * Every Shader with its GLSL source as raw text and its Still, after checking each source
  * against its Parameters (ADR 0009).
  */
 export async function checkedShaders(): Promise<
-  {
-    shader: CollectionEntry<"shaders">;
-    source: string;
-    still: ImageMetadata;
-  }[]
+  CheckedShader<CollectionEntry<"shaders">, ImageMetadata>[]
 > {
   return checkShaderSources(await getCollection("shaders"), sources, stills);
 }
@@ -92,8 +93,8 @@ export function checkShaderSources<
   entries: readonly Shader[],
   sourcesByPath: Readonly<Record<string, string>>,
   stillsByPath: Readonly<Record<string, Still>>,
-): { shader: Shader; source: string; still: Still }[] {
-  const shaders: { shader: Shader; source: string; still: Still }[] = [];
+): CheckedShader<Shader, Still>[] {
+  const shaders: CheckedShader<Shader, Still>[] = [];
   const problems: string[] = [];
 
   // The site always has a Shader, so none means the loader is looking in the wrong place.

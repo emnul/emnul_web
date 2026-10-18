@@ -1,6 +1,6 @@
 # Astro over Next.js
 
-The site is mostly static content (Posts, Shaders) plus self-contained interactive widgets (Shader canvases, interactive demos, a GitHub activity widget), with nothing that must persist across navigation. We chose Astro with React islands over Next.js because it ships zero JS by default, has typed MDX content collections built in, and its `client:visible` hydration matches the rule that a Shader renders only while on screen — the least complexity for this shape. React is still used for every interactive component.
+The site is mostly static content (Posts, Shaders) plus self-contained interactive widgets (Shader canvases, interactive demos, a GitHub activity widget), with nothing that must persist across navigation. We chose Astro with React islands over Next.js because it ships zero JS by default, has typed MDX content collections built in, and its islands load a widget's JS only on the pages that use it, so three.js stays off pages without a Shader (ADR 0010). That is the least complexity for this shape. React is still used for every interactive component.
 
 ## Considered Options
 
