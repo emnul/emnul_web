@@ -1,7 +1,9 @@
 ---
 import type { GetStaticPaths } from "astro";
+import type { ComponentProps } from "astro/types";
 import { getImage, Image } from "astro:assets";
 import { render } from "astro:content";
+import MoireMagnifier from "../../moire-magnifier/MoireMagnifier";
 import ShaderCanvas from "../../renderer/ShaderCanvas";
 import { checkedShaders } from "../../shader-core/shaders";
 import "../../styles/global.css";
@@ -26,6 +28,22 @@ const ogImage = await getImage({
 const ogImageUrl = new URL(ogImage.src, Astro.site).href;
 // The Write-up: the body of `index.mdx`. A Shader without one renders nothing here.
 const { Content: WriteUp } = await render(shader);
+
+const island = {
+  source,
+  startTime: shader.data.still.time,
+  parameters: shader.data.parameters,
+};
+// The Still shows until the canvas draws its first frame over it.
+const stillImage: ComponentProps<typeof Image> = {
+  src: still,
+  alt: stillAlt,
+  widths: [640, 1280],
+  sizes: "(min-width: 720px) 65ch, 100vw",
+  loading: "eager",
+  fetchpriority: "high",
+  class: "absolute inset-0 size-full object-cover",
+};
 ---
 
 <html lang="en">
@@ -54,23 +72,19 @@ const { Content: WriteUp } = await render(shader);
     <main class="prose mx-auto p-8">
       <h1>{title}</h1>
       <p>{description}</p>
-      <ShaderCanvas
-        client:load
-        source={source}
-        startTime={shader.data.still.time}
-        parameters={shader.data.parameters}
-      >
-        {/* The Still shows until the canvas draws its first frame over it. */}
-        <Image
-          src={still}
-          alt={stillAlt}
-          widths={[640, 1280]}
-          sizes="(min-width: 720px) 65ch, 100vw"
-          loading="eager"
-          fetchpriority="high"
-          class="absolute inset-0 size-full object-cover"
-        />
-      </ShaderCanvas>
+      {
+        // The Moiré magnifier's detector measures its renders, so it shares the canvas's island.
+        // That island is its own, so the detector loads on no other page.
+        shader.id === "moire-magnifier" ? (
+          <MoireMagnifier client:load {...island}>
+            <Image {...stillImage} />
+          </MoireMagnifier>
+        ) : (
+          <ShaderCanvas client:load {...island}>
+            <Image {...stillImage} />
+          </ShaderCanvas>
+        )
+      }
       <WriteUp />
       <pre><code class="language-glsl">{source}</code></pre>
     </main>

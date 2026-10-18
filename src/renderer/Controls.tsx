@@ -1,7 +1,7 @@
 // One Control per Parameter (ADR 0011), on native inputs styled like the site: a slider for a
 // `number`, radio buttons for a `choice`. It holds no state: the caller passes each Parameter's
-// current value and hears about every change.
-import { useId } from "react";
+// current value and hears about every change, and about each change the visitor finishes.
+import { useEffect, useEffectEvent, useId, useRef } from "react";
 // Types only: the contract's schemas use Zod, which mustn't ship to the browser.
 import type { Parameter } from "../shader-core/contract";
 import type { ParameterValues } from "./renderer";
@@ -13,6 +13,12 @@ interface Props {
   values: ParameterValues;
   /** Called with a Parameter's new value as the visitor changes it, including mid-drag. */
   onChange: (name: string, value: number) => void;
+  /**
+   * Called when the visitor finishes a change, after the `onChange` with its final value: a
+   * slider let go of or moved by a key, or an option picked. For work too slow for every step
+   * of a drag.
+   */
+  onSettle?: () => void;
   className?: string;
 }
 
@@ -20,10 +26,27 @@ export default function Controls({
   parameters,
   values,
   onChange,
+  onSettle,
   className,
 }: Props) {
+  const root = useRef<HTMLDivElement>(null);
+  const settle = useEffectEvent(() => onSettle?.());
+
+  // React's onChange follows the native `input` event, which fires all through a drag. The
+  // native `change` event fires once the change is finished, and bubbles.
+  useEffect(() => {
+    const element = root.current;
+    if (!element) return;
+    const listener = () => settle();
+    element.addEventListener("change", listener);
+    return () => element.removeEventListener("change", listener);
+  }, []);
+
   return (
-    <div className={`grid gap-x-8 gap-y-4 sm:grid-cols-2 ${className ?? ""}`}>
+    <div
+      ref={root}
+      className={`grid gap-x-8 gap-y-4 sm:grid-cols-2 ${className ?? ""}`}
+    >
       {parameters.map((parameter) => (
         <Control
           key={parameter.name}

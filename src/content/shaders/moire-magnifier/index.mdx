@@ -103,7 +103,7 @@ This Shader sits at _M_ ≈ 20 because of the measurement below. It analyses a 1
 
 ## Measuring misregistration from the image
 
-A detector measures the scale error, the rotation and whether the image sinks or floats from the rendered pixels alone, and passes or fails the scale error against ±0.4%. It isn't on this page yet, so this section describes its approach.
+The detector above measures the scale error and the rotation from the rendered pixels alone, each time you let go of a Control, and passes or fails the scale error against ±0.4%. Telling whether the image sinks or floats is still to come.
 
 The icon decides what one period of the magnified image looks like, but not how long the period is or which way it points: those depend only on _s_, _θ_ and _b_. The image's 2D Fourier spectrum is a square lattice of peaks, and changing the icon changes how strong each peak is, never where it is. So the detector needs the nominal lens and icon pitches and never which icon is drawn.
 
@@ -123,22 +123,22 @@ _s_ = 1 / |1 + _p_·_b_|&emsp;and&emsp;_θ_ = arg(1 + _p_·_b_)
 
 </div>
 
-The approach:
+The method:
 
 1. Render the Shader at 1024 × 1024 off screen and read back the pixels.
 2. Convert them to brightness and average 4 × 4 blocks down to 256 × 256. That keeps the frequency resolution on a sixteenth of the data, and moves the lens grid's own peaks out of the band where the moiré peaks lie.
 3. Subtract the mean, apply a Hann window and take a 2D FFT.
-4. Take the significant peak nearest the centre of the spectrum, not the strongest. Depending on the icon the strongest can be a diagonal or a harmonic, but the nearest is a fundamental.
+4. Take the significant peak nearest the centre of the spectrum, not the strongest, whose quarter-turn is a peak too. Depending on the icon the strongest can be a diagonal or a harmonic, but the nearest is a fundamental. The lenses sample the image, which folds a fine icon's high harmonics back near the centre, but those come without a quarter-turn.
 5. Refine it. ±0.1% in scale needs the peak's position to about 0.18 of an FFT bin, and the FFT alone gives ±0.5 bin. Evaluating the Fourier transform directly on a shrinking grid of frequencies around the peak gets to a few thousandths of a bin, the coarse-then-fine search of [Rife & Boorstyn](https://doi.org/10.1109/TIT.1974.1055282).
 6. Invert the refined peak to _s_ and _θ_, and compare the scale error _e_ = _s_/_s_<sub>nom</sub> − 1 with ±0.4%.
 
-Its tests are to render this Shader with known injected errors, for each icon, and require the scale error to within ±0.1% and the rotation to within 0.1°.
+Its tests render this Shader with known injected errors under each icon, and require the scale error to within ±0.1%, the rotation to within 0.1° and the same reading from every icon. The worst errors seen are under 0.015% and 0.001°.
 
 Measuring the beat between the layers rather than either layer is what makes this a sensitive ruler: an error in the assumed lens pitch moves the measured _s_ by only (1 − _s_) times as much, 0.05% for each 1% at _M_ ≈ 20. Checking a document by its moiré has precedent too: [Hersch & Chosson](https://patents.google.com/patent/US7194105B2/en) authenticate documents by the enlarged patterns a revealing grating draws over printed bands.
 
 ### Sinking or floating
 
-One image can't tell. Every peak at _q_ has a twin at −*q*, and reading the measured peak as −*q* gives a second solution, _s_′ = _s_/(2*s* − 1) with the rotation roughly reversed, so 0.95 pairs with 1.056. The upside-down icon under that second solution draws exactly the same picture. The approach is a second view at a known small tilt from the first. Tilting moves a sinking image with the viewer and a floating one against them, so the peak's phase, compared at the same frequency in both views as in [Takeda et al.'s fringe analysis](https://doi.org/10.1364/JOSA.72.000156), turns one way for sinking and the other for floating.
+One image can't tell. Every peak at _q_ has a twin at −*q*, and reading the measured peak as −*q* gives a second solution, _s_′ = _s_/(2*s* − 1) with the rotation roughly reversed, so 0.95 pairs with 1.056. The upside-down icon under that second solution draws exactly the same picture. The approach is a second view at a known small tilt from the first. Tilting moves a sinking image with the viewer and a floating one against them, so the peak's phase, compared at the same frequency in both views as in [Takeda et al.'s fringe analysis](https://doi.org/10.1364/JOSA.72.000156), turns one way for sinking and the other for floating. Until that lands, the detector takes the solution on the design's side of 1, so above 1 it reads the twin: at 1.056 it reports no error.
 
 ### Noise and defects
 

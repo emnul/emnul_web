@@ -1,4 +1,4 @@
-import type { ComponentProps } from "react";
+import { useState, type ComponentProps } from "react";
 import { flushSync } from "react-dom";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, expect, test, vi } from "vitest";
@@ -13,14 +13,31 @@ afterEach(() => {
   document.body.replaceChildren();
 });
 
+type Props = ComponentProps<typeof Controls>;
+
+/** Holds the values the Controls show, as a page does, so each change shows. */
+function Caller({ values: initial, onChange, ...props }: Props) {
+  const [values, setValues] = useState(initial);
+  return (
+    <Controls
+      {...props}
+      values={values}
+      onChange={(name, value) => {
+        setValues((current) => ({ ...current, [name]: value }));
+        onChange(name, value);
+      }}
+    />
+  );
+}
+
 /** Renders the Controls into the page, reporting each change to the returned mock. */
-function render(props: Omit<ComponentProps<typeof Controls>, "onChange">) {
+function render(props: Omit<Props, "onChange">) {
   const onChange = vi.fn<(name: string, value: number) => void>();
   const root = createRoot(
     document.body.appendChild(document.createElement("div")),
   );
   roots.push(root);
-  flushSync(() => root.render(<Controls {...props} onChange={onChange} />));
+  flushSync(() => root.render(<Caller {...props} onChange={onChange} />));
   return onChange;
 }
 
@@ -62,6 +79,23 @@ const shape = {
   default: 0,
 } satisfies Parameter;
 
+test("a key press on a slider is a finished change, reported after its new value", async () => {
+  const onSettle = vi.fn<() => void>();
+  const onChange = render({
+    parameters: [speed],
+    values: { speed: 1.5 },
+    onSettle,
+  });
+
+  page.getByRole("slider", { name: "Speed" }).element().focus();
+  await userEvent.keyboard("{ArrowRight}");
+
+  expect(onSettle).toHaveBeenCalledOnce();
+  expect(onChange.mock.invocationCallOrder[0]).toBeLessThan(
+    onSettle.mock.invocationCallOrder[0],
+  );
+});
+
 test("a choice Parameter gets a labelled radio group with one radio per option", async () => {
   render({ parameters: [shape], values: { shape: 1 } });
 
@@ -83,4 +117,13 @@ test("picking an option reports its index", async () => {
   await userEvent.click(page.getByRole("radio", { name: "Star" }));
 
   expect(onChange).toHaveBeenLastCalledWith("shape", 2);
+});
+
+test("picking an option is a finished change", async () => {
+  const onSettle = vi.fn<() => void>();
+  render({ parameters: [shape], values: { shape: 1 }, onSettle });
+
+  await userEvent.click(page.getByRole("radio", { name: "Star" }));
+
+  expect(onSettle).toHaveBeenCalledOnce();
 });
