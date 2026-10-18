@@ -17,6 +17,9 @@ uniform float offset;
 uniform float viewAngle;
 // 0: a letter R, 1: a star, 2: lines in a disc.
 uniform int icon;
+// Grey noise added to every pixel, as a camera would, with this standard deviation as a fraction
+// of white. Each pixel's noise depends on its position alone, so a frame renders the same twice.
+uniform float noise;
 
 out vec4 fragColor;
 
@@ -112,6 +115,27 @@ vec3 shade(vec2 fragCoord) {
     return mix(PAPER, INK, ink);
 }
 
+// Jarzynski and Olano's pcg2d: two well-mixed 32-bit integers from two.
+uvec2 hash(uvec2 v) {
+    v = v * 1664525u + 1013904223u;
+    v.x += v.y * 1664525u;
+    v.y += v.x * 1664525u;
+    v ^= v >> 16u;
+    v.x += v.y * 1664525u;
+    v.y += v.x * 1664525u;
+    v ^= v >> 16u;
+    return v;
+}
+
+// A standard normal value for a pixel, by the Box–Muller transform of two uniform ones.
+float gaussian(uvec2 pixel) {
+    // The top 24 bits of each, which a float holds exactly: u1 in (0, 1], so its log is finite.
+    uvec2 bits = hash(pixel) >> 8u;
+    float u1 = (float(bits.x) + 1.0) / 16777216.0;
+    float u2 = float(bits.y) / 16777216.0;
+    return sqrt(-2.0 * log(u1)) * cos(6.28318530718 * u2);
+}
+
 void main() {
     // 2×2 samples per pixel smooth lens edges that fall inside a pixel. At 1024² every lens edge
     // is a pixel edge, so there they change nothing.
@@ -120,5 +144,6 @@ void main() {
         vec2 sub = vec2(float(i & 1), float(i >> 1)) * 0.5 - 0.25;
         colour += shade(gl_FragCoord.xy + sub);
     }
-    fragColor = vec4(colour / 4.0, 1.0);
+    colour = colour / 4.0 + noise * gaussian(uvec2(gl_FragCoord.xy));
+    fragColor = vec4(colour, 1.0);
 }

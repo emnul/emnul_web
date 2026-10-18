@@ -43,6 +43,13 @@ parameters:
     label: Icon
     options: [Letter, Star, Lines]
     default: 0
+  - type: number
+    name: noise
+    label: Noise (σ, fraction of white)
+    default: 0
+    min: 0
+    max: 1
+    step: 0.01
 ---
 
 Each lens above shows a single colour, yet together they draw large letters. Under the lenses, a layer of tiny icons repeats slightly more finely than the lenses do, and that 5% mismatch is enough to magnify the icons twentyfold. This is a moiré magnifier, the optics behind some banknote security features. It is also very sensitive to how well its two layers line up, and that sensitivity can be measured from the image alone.
@@ -140,9 +147,13 @@ Measuring the beat between the layers rather than either layer is what makes thi
 
 One image can't tell. Every peak at _q_ has a twin at −*q*, and reading the measured peak as −*q* gives a second solution, _s_′ = _s_/(2*s* − 1) with the rotation roughly reversed, so 0.95 pairs with 1.056. The upside-down icon under that second solution draws exactly the same picture. The approach is a second view at a known small tilt from the first. Tilting moves a sinking image with the viewer and a floating one against them, so the peak's phase, compared at the same frequency in both views as in [Takeda et al.'s fringe analysis](https://doi.org/10.1364/JOSA.72.000156), turns one way for sinking and the other for floating. Until that lands, the detector takes the solution on the design's side of 1, so above 1 it reads the twin: at 1.056 it reports no error.
 
-### Noise and defects
+### Noise
 
-Random noise in the image spreads thinly across the whole spectrum, so it threatens which peak is picked more than where that peak lies. A streak printed across the icon layer isn't periodic, so the lenses don't magnify it: it adds a line of energy through the spectrum's centre rather than a peak. Optional noise and streak Parameters are planned, to show this on the page.
+The Noise Control adds grey noise to every pixel, as a camera's sensor would, with a standard deviation _σ_ given as a fraction of white. Each pixel's noise comes from a hash of its position, so a frame comes out the same every time it's rendered and a measurement can be repeated.
+
+Noise spreads thinly across the whole spectrum, while the moiré gathers into a few peaks: averaging 4 × 4 blocks cuts the noise to a quarter, and every bin of the spectrum sums the whole frame. So noise threatens which peak is picked more than where that peak lies. Even at _σ_ = 1, the Control's maximum, where clipping at black and white has cost the moiré more than half its contrast, a typical bin of the spectrum holds about a sixtieth of the moiré's peak. The tests repeat every case at _σ_ = 1 and still read each to within 0.021% and 0.006°, and still find nothing to measure near _s_ = 1.
+
+A streak printed across the icon layer isn't periodic, so the lenses don't magnify it: it adds a line of energy through the spectrum's centre rather than a peak. An optional streak Parameter is planned, to show this on the page.
 
 ## Limits
 
@@ -150,7 +161,7 @@ Random noise in the image spreads thinly across the whole spectrum, so it threat
 - **A square lattice looks the same turned 90°**, so the peak to invert is taken as the one within 45° of the lens axis. That holds while the image turns less than 45°: rotations under 2.86° at _s_ = 0.95, less nearer 1, which is why the Rotation Control stops at ±2°. Comparing phases at two perpendicular peaks would lift this.
 - **The lens pitch is taken as known.** A real system would measure it from the lens grid's own peaks, and errors in it matter little, as above.
 - **The icon must have a fundamental.** An icon that repeats within its own tile, such as evenly spaced bars filling it, has no peak at the true period, so its image reads as a shorter period and the wrong _s_. That's why the Lines icon sits inside a disc.
-- **The images are ideal**: perfectly focused lenses, a distant viewer, a flat sheet, even lighting and exact pitches.
+- **The images are ideal** apart from the optional noise: perfectly focused lenses, a distant viewer, a flat sheet, even lighting and exact pitches.
 
 ## Moving the measurement to the GPU
 
