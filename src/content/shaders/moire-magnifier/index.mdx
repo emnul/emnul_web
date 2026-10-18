@@ -1,0 +1,46 @@
+---
+title: Moiré magnifier
+date: 2026-10-18
+description: A square array of lenses over a slightly finer array of icons magnifies them about twentyfold, so a misregistration of a fraction of a percent between the two layers changes the image dramatically.
+featured: false
+still:
+  # Nearer 1 than the default and slightly turned, so the magnified letters are large and the
+  # rotation's amplification shows.
+  parameters:
+    scaleRatio: 0.965
+    rotation: 0.5
+parameters:
+  - type: number
+    name: scaleRatio
+    label: Scale ratio (icon / lens pitch)
+    default: 0.95
+    min: 0.9
+    max: 1.1
+    step: 0.0001
+  - type: number
+    name: rotation
+    label: Rotation (°)
+    default: 0
+    min: -2
+    max: 2
+    step: 0.01
+  - type: number
+    name: offset
+    label: Offset (icon pitches)
+    default: 0
+    min: 0
+    max: 1
+    step: 0.01
+  - type: number
+    name: viewAngle
+    label: Viewing angle (°)
+    default: 0
+    min: -30
+    max: 30
+    step: 0.5
+  - type: choice
+    name: icon
+    label: Icon
+    options: [Letter, Star, Lines]
+    default: 0
+---
