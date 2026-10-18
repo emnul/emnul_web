@@ -11,10 +11,14 @@
     <script type="module">
       import { createShaderRenderer } from "/src/renderer/renderer.ts";
 
-      // Renders one frame at `time` seconds and returns it as a PNG data URL.
-      window.renderStill = (source, time, width, height) => {
+      // Renders one frame at `time` seconds and Parameter `values`, and returns it as a PNG data URL.
+      window.renderStill = (source, time, values, width, height) => {
         const canvas = document.createElement("canvas");
-        const renderer = createShaderRenderer(canvas, source, time);
+        const renderer = createShaderRenderer(canvas, {
+          source,
+          startTime: time,
+          values,
+        });
         try {
           // Never started, so resizing draws one frame with `u_time` exactly `time`.
           renderer.resize(width, height);
