@@ -4,7 +4,7 @@
 
 ### Issue tracker
 
-Issues live in Linear, managed via the Linear MCP tools. See `docs/agents/issue-tracker.md`.
+Issues live in GitHub Issues (with GitHub Projects), managed via the `gh` CLI. See `docs/agents/issue-tracker.md`.
 
 ### Triage labels
 

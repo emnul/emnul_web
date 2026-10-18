@@ -1,0 +1,29 @@
+<!doctype html>
+<!-- Served by Vite for scripts/generateStills.ts, so the Still comes from the site's own renderer. -->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Stills harness</title>
+    <!-- Stops Chromium requesting /favicon.ico, whose 404 would read as a render error. -->
+    <link rel="icon" href="data:," />
+  </head>
+  <body>
+    <script type="module">
+      import { createShaderRenderer } from "/src/renderer/renderer.ts";
+
+      // Renders one frame at `time` seconds and returns it as a PNG data URL.
+      window.renderStill = (source, time, width, height) => {
+        const canvas = document.createElement("canvas");
+        const renderer = createShaderRenderer(canvas, source, time);
+        try {
+          // Never started, so resizing draws one frame with `u_time` exactly `time`.
+          renderer.resize(width, height);
+          // Read in the same task as the draw, before the browser clears the drawing buffer.
+          return canvas.toDataURL("image/png");
+        } finally {
+          renderer.dispose();
+        }
+      };
+    </script>
+  </body>
+</html>

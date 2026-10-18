@@ -35,7 +35,7 @@ A Shader shown live inside a Post, referenced by its slug.
 _Avoid_: Inline shader, widget
 
 **Still**:
-A static image of a Shader frozen at a moment and Parameter values chosen per Shader, shown in place of live rendering when motion is reduced, WebGL2 is unavailable, the Shader fails to compile, or in the Gallery until interaction.
+A static image of a Shader frozen at a moment and Parameter values chosen per Shader, shown in place of live rendering while it loads, when motion is reduced, WebGL2 is unavailable, the Shader fails to compile, or in the Gallery until interaction.
 _Avoid_: Poster, thumbnail, fallback image
 
 **Inputs**:
