@@ -44,3 +44,145 @@ parameters:
     options: [Letter, Star, Lines]
     default: 0
 ---
+
+Each lens above shows a single colour, yet together they draw large letters. Under the lenses, a layer of tiny icons repeats slightly more finely than the lenses do, and that 5% mismatch is enough to magnify the icons twentyfold. This is a moiré magnifier, the optics behind some banknote security features. It is also very sensitive to how well its two layers line up, and that sensitivity can be measured from the image alone.
+
+## Moiré magnification
+
+The Shader draws a square array of lenses over a square array of icons. The icons lie in the lenses' focal plane and the viewer is far away, so every ray through one lens lands on the same point of the icon layer, and the whole lens shows that point's colour ([Hutley et al. 1994](https://doi.org/10.1088/0963-9659/3/2/006)).
+
+Call the lens pitch _b_ and the icon pitch _s_·_b_, where the **scale ratio** _s_ is icon pitch over lens pitch, as [Steenblik et al.](https://patents.google.com/patent/US7333268B2/en) define it. One lens further on, the sampled point has moved one lens pitch, which is one icon pitch plus (1 − _s_)·_b_: the next lens sees the next icon, a little further in. Crossing one whole icon takes _s_/(1 − _s_) lenses, so the lenses together draw the icon at
+
+<div class="text-center">
+
+_M_ = 1 / (1 − _s_)
+
+</div>
+
+times its printed size. At the default _s_ = 0.95 that's 20. Turning the icon layer by _θ_ makes the magnification a complex number,
+
+<div class="text-center">
+
+_μ_ = 1 / (1 − _s_ _e_<sup>_iθ_</sup>),
+
+</div>
+
+whose size is how much the icon grows and whose angle is how far it turns. For small _θ_ the image turns by about _θ_/(1 − _s_), so rotation is amplified about _M_ times: at _s_ = 0.95, turning the icon layer by 1° turns the image by 19° (and shrinks it slightly, to 18.9×). The Offset Control slides the icon layer instead: one icon pitch moves the image one whole period, without changing its size.
+
+## Sinking and floating
+
+Tilting a magnifier moves each lens's focus across the icon layer, and the image moves _μ_ times as far. The Viewing angle Control does this: it moves each focus by _f_·tan _α_ for a lens of focal length _f_ seen at angle _α_.
+
+- **With _s_ below 1**, _μ_ is positive. The image is upright and moves with the viewer, as an object about |_μ_|·_f_ behind the surface would: it **sinks**.
+- **With _s_ above 1**, _μ_ is negative. The image is upside down and moves against the viewer, as an object in front of the surface would: it **floats**.
+
+Steenblik et al. call these Deep and Float, and [Holmes](https://patents.google.com/patent/US9177433B2/en) and [Kamal et al. 1998](https://doi.org/10.1117/1.601889) agree on which is which. So pushing the scale ratio up through 1 flips the image from sinking to floating. A screen has no stereo, so here the depth shows in two ways: a sinking image follows the Viewing angle slider and a floating one moves the other way, and the floating letter reads upside down.
+
+At exactly _s_ = 1 the magnification is unbounded and the lenses all show one colour. Add a little rotation and the image comes back, about 1/_θ_ times larger (57× at 1°), and now moves at right angles to the tilt. That is the effect on the [US $100 note's 3-D Security Ribbon](https://www.uscurrency.gov/denominations/100): "When you tilt the note back and forth, the bells and 100s move side to side."
+
+## Why a fraction of a percent matters
+
+Differentiating _M_ = 1/(1 − _s_) gives
+
+<div class="text-center">
+
+d*M* / _M_ = d*s* / (1 − _s_) = _M_·d*s*
+
+</div>
+
+The relative change in magnification is the change in scale ratio multiplied by the magnification itself. Measure misregistration as the **scale error** _e_ = _s_/_s_<sub>nom</sub> − 1, the fractional error in the icon layer's scale against the lens layer, and allow ±0.4%:
+
+|                | _s_   | _M_ | _s_ at ±0.4%  | _M_ at ±0.4% |
+| -------------- | ----- | --- | ------------- | ------------ |
+| This Shader    | 0.95  | 20  | 0.9462–0.9538 | 18.6–21.6    |
+| Patent example | 0.995 | 200 | 0.9910–0.9990 | 111–980      |
+
+At _M_ ≈ 20 the tolerance moves the magnification by under 10%. Steenblik et al.'s example uses a scale ratio of 0.995, so _M_ ≈ 200. There the same tolerance spans almost a factor of nine, and an error just over +0.5% pushes _s_ past 1, so the image flips from sinking to floating. The linear rule's ±80% (200 × 0.4%) understates it, because the tolerance band is nearly as wide as 1 − _s_ itself. Rotation scales the same way: 0.1° between the layers turns the image 2° at _M_ ≈ 20 and 20° at _M_ ≈ 200.
+
+This Shader sits at _M_ ≈ 20 because of the measurement below. It analyses a 1024 × 1024 render with lenses 6 pixels apart, so at _M_ ≈ 20 one period of the image is 114 pixels and about nine fit across the frame. At _M_ ≈ 200 one period would be about 1,200 pixels, wider than the frame, leaving nothing periodic to measure. Keeping nine periods in frame at 200 would need a render ten times wider. Instead the relation above carries the result across: at _M_ ≈ 200 the same scale error changes the magnification by ten times the fraction, and by more once the error nears 1 − _s_.
+
+## Measuring misregistration from the image
+
+The detector above measures the scale error and the rotation from the rendered pixels alone, each time you let go of a Control, and passes or fails the scale error against ±0.4%. Telling whether the image sinks or floats is still to come.
+
+The icon decides what one period of the magnified image looks like, but not how long the period is or which way it points: those depend only on _s_, _θ_ and _b_. The image's 2D Fourier spectrum is a square lattice of peaks, and changing the icon changes how strong each peak is, never where it is. So the detector needs the nominal lens and icon pitches and never which icon is drawn.
+
+Writing 2D frequencies as complex numbers, the image's fundamental frequency is the difference between the icon layer's frequency and the lens layer's, the (1,&nbsp;−1) moiré of [Amidror's Fourier theory](https://doi.org/10.1007/978-1-84882-181-1):
+
+<div class="text-center">
+
+_q_ = (_e_<sup>_iθ_</sup> / _s_ − 1) / _b_
+
+</div>
+
+so a peak measured at frequency _p_ gives back the scale ratio and rotation as
+
+<div class="text-center">
+
+_s_ = 1 / |1 + _p_·_b_|&emsp;and&emsp;_θ_ = arg(1 + _p_·_b_)
+
+</div>
+
+The method:
+
+1. Render the Shader at 1024 × 1024 off screen and read back the pixels.
+2. Convert them to brightness and average 4 × 4 blocks down to 256 × 256. That keeps the frequency resolution on a sixteenth of the data, and moves the lens grid's own peaks out of the band where the moiré peaks lie.
+3. Subtract the mean, apply a Hann window and take a 2D FFT.
+4. Take the significant peak nearest the centre of the spectrum, not the strongest, whose quarter-turn is a peak too. Depending on the icon the strongest can be a diagonal or a harmonic, but the nearest is a fundamental. The lenses sample the image, which folds a fine icon's high harmonics back near the centre, but those come without a quarter-turn.
+5. Refine it. ±0.1% in scale needs the peak's position to about 0.18 of an FFT bin, and the FFT alone gives ±0.5 bin. Evaluating the Fourier transform directly on a shrinking grid of frequencies around the peak gets to a few thousandths of a bin, the coarse-then-fine search of [Rife & Boorstyn](https://doi.org/10.1109/TIT.1974.1055282).
+6. Invert the refined peak to _s_ and _θ_, and compare the scale error _e_ = _s_/_s_<sub>nom</sub> − 1 with ±0.4%.
+
+Its tests render this Shader with known injected errors under each icon, and require the scale error to within ±0.1%, the rotation to within 0.1° and the same reading from every icon. The worst errors seen are under 0.015% and 0.001°.
+
+Measuring the beat between the layers rather than either layer is what makes this a sensitive ruler: an error in the assumed lens pitch moves the measured _s_ by only (1 − _s_) times as much, 0.05% for each 1% at _M_ ≈ 20. Checking a document by its moiré has precedent too: [Hersch & Chosson](https://patents.google.com/patent/US7194105B2/en) authenticate documents by the enlarged patterns a revealing grating draws over printed bands.
+
+### Sinking or floating
+
+One image can't tell. Every peak at _q_ has a twin at −*q*, and reading the measured peak as −*q* gives a second solution, _s_′ = _s_/(2*s* − 1) with the rotation roughly reversed, so 0.95 pairs with 1.056. The upside-down icon under that second solution draws exactly the same picture. The approach is a second view at a known small tilt from the first. Tilting moves a sinking image with the viewer and a floating one against them, so the peak's phase, compared at the same frequency in both views as in [Takeda et al.'s fringe analysis](https://doi.org/10.1364/JOSA.72.000156), turns one way for sinking and the other for floating. Until that lands, the detector takes the solution on the design's side of 1, so above 1 it reads the twin: at 1.056 it reports no error.
+
+### Noise and defects
+
+Random noise in the image spreads thinly across the whole spectrum, so it threatens which peak is picked more than where that peak lies. A streak printed across the icon layer isn't periodic, so the lenses don't magnify it: it adds a line of energy through the spectrum's centre rather than a peak. Optional noise and streak Parameters are planned, to show this on the page.
+
+## Limits
+
+- **It needs a few periods in frame.** Within about 1.5% of _s_ = 1, where the magnification passes 65, fewer than 2.5 periods fit and the scale can't be measured. That is far outside the tolerance anyway.
+- **A square lattice looks the same turned 90°**, so the peak to invert is taken as the one within 45° of the lens axis. That holds while the image turns less than 45°: rotations under 2.86° at _s_ = 0.95, less nearer 1, which is why the Rotation Control stops at ±2°. Comparing phases at two perpendicular peaks would lift this.
+- **The lens pitch is taken as known.** A real system would measure it from the lens grid's own peaks, and errors in it matter little, as above.
+- **The icon must have a fundamental.** An icon that repeats within its own tile, such as evenly spaced bars filling it, has no peak at the true period, so its image reads as a shorter period and the wrong _s_. That's why the Lines icon sits inside a disc.
+- **The images are ideal**: perfectly focused lenses, a distant viewer, a flat sheet, even lighting and exact pitches.
+
+## Moving the measurement to the GPU
+
+The approach runs on the CPU. Each view is a 1024 × 1024 RGBA readback of 4 MB, and WebGL's `readPixels` makes the page wait until the GPU has finished drawing it. The GPU could do all the work and hand back a few numbers:
+
+1. Average 4 × 4 blocks in a render pass into a floating-point target, which WebGL2 allows with `EXT_color_buffer_float`.
+2. Either run the FFT as log₂ _N_ ping-pong passes along each axis, or, once the peak's rough position is known, skip the FFT and evaluate the transform on a small grid of frequencies with reduction passes, one output texel per frequency.
+3. Read those few values back asynchronously, through a pixel buffer object and a fence (`fenceSync`), so the page never waits.
+
+That chains several render passes, and the site renders every Shader in a single pass, so it stays a plan.
+
+## Next: hexagonal lens arrays
+
+Round lenses cover about 91% of a hexagonal grid against 79% of a square one. The optics carry over: the icon grid is still the lens grid scaled by _s_ and turned by _θ_, so the magnified image repeats on a hexagonal grid too and _μ_ = 1/(1 − _s_ _e_<sup>_iθ_</sup>) still holds. The detector changes more: six peaks around the centre instead of four, a six-way ambiguity instead of a four-way one, and inversion through the hexagonal grid's reciprocal vectors.
+
+## Where learned models take over
+
+Everything above relies on an ideal image. A camera frame of a real sheet adds perspective from a tilted or curved sample, motion blur, defocus, uneven lighting and glare off the lenses. Some of that has classical fixes, such as estimating the perspective from how the lens grid's spacing varies across the frame. Finding the feature in a cluttered frame, undoing an unknown pose and rejecting blurred or glary frames is where learned models would take over, handing a cleaned-up patch to the Fourier measurement, which stays the step that reports a number and can explain it.
+
+## References
+
+Patents on moiré magnifiers:
+
+- R. A. Steenblik, M. J. Hurt and G. R. Jordan, [_Micro-optic security and image presentation system_](https://patents.google.com/patent/US7333268B2/en), US 7,333,268 B2, 2008. Defines the scale ratio, and its Deep, Float and Motion effects.
+- B. W. Holmes, [_Moire magnification device_](https://patents.google.com/patent/US9177433B2/en), US 9,177,433 B2, De La Rue International, 2015.
+- K. J. Drinkwater and P. M. G. Hudson, [_Security device for security documents such as bank notes and credit cards_](https://patents.google.com/patent/US5712731A/en), US 5,712,731 A, Thomas De La Rue, 1998. An early lens-array-over-microimage banknote device.
+- R. D. Hersch and S. Chosson, [_Authentication of documents and articles by moiré patterns_](https://patents.google.com/patent/US7194105B2/en), US 7,194,105 B2, 2007.
+
+Papers and books:
+
+- M. C. Hutley, R. Hunt, R. F. Stevens and P. Savander, [“The moiré magnifier”](https://doi.org/10.1088/0963-9659/3/2/006), _Pure and Applied Optics_ 3(2), 133–142, 1994.
+- H. Kamal, R. Völkel and J. Alda, [“Properties of moiré magnifiers”](https://doi.org/10.1117/1.601889), _Optical Engineering_ 37(11), 3007–3014, 1998.
+- I. Amidror, [_The Theory of the Moiré Phenomenon, Volume I: Periodic Layers_](https://doi.org/10.1007/978-1-84882-181-1), 2nd ed., Springer, 2009.
+- D. C. Rife and R. R. Boorstyn, [“Single tone parameter estimation from discrete-time observations”](https://doi.org/10.1109/TIT.1974.1055282), _IEEE Transactions on Information Theory_ 20(5), 591–598, 1974.
+- M. Takeda, H. Ina and S. Kobayashi, [“Fourier-transform method of fringe-pattern analysis for computer-based topography and interferometry”](https://doi.org/10.1364/JOSA.72.000156), _Journal of the Optical Society of America_ 72(1), 156, 1982.

@@ -2,6 +2,7 @@
 import type { GetStaticPaths } from "astro";
 import type { ComponentProps } from "astro/types";
 import { getImage, Image } from "astro:assets";
+import { render } from "astro:content";
 import MoireMagnifier from "../../moire-magnifier/MoireMagnifier";
 import ShaderCanvas from "../../renderer/ShaderCanvas";
 import { checkedShaders } from "../../shader-core/shaders";
@@ -25,6 +26,8 @@ const ogImage = await getImage({
   format: "jpg",
 });
 const ogImageUrl = new URL(ogImage.src, Astro.site).href;
+// The Write-up: the body of `index.mdx`. A Shader without one renders nothing here.
+const { Content: WriteUp } = await render(shader);
 
 const island = {
   source,
@@ -82,6 +85,7 @@ const stillImage: ComponentProps<typeof Image> = {
           </ShaderCanvas>
         )
       }
+      <WriteUp />
       <pre><code class="language-glsl">{source}</code></pre>
     </main>
   </body>
