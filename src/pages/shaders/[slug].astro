@@ -51,8 +51,13 @@ const ogImageUrl = new URL(ogImage.src, Astro.site).href;
     <main class="prose mx-auto p-8">
       <h1>{title}</h1>
       <p>{description}</p>
-      {/* The Still shows until the canvas draws its first frame over it. */}
-      <div class="not-prose relative aspect-video w-full">
+      <ShaderCanvas
+        client:load
+        source={source}
+        startTime={shader.data.still.time}
+        parameters={shader.data.parameters}
+      >
+        {/* The Still shows until the canvas draws its first frame over it. */}
         <Image
           src={still}
           alt={stillAlt}
@@ -62,13 +67,7 @@ const ogImageUrl = new URL(ogImage.src, Astro.site).href;
           fetchpriority="high"
           class="absolute inset-0 size-full object-cover"
         />
-        <ShaderCanvas
-          client:load
-          source={source}
-          startTime={shader.data.still.time}
-          className="absolute inset-0 block size-full"
-        />
-      </div>
+      </ShaderCanvas>
       <pre><code class="language-glsl">{source}</code></pre>
     </main>
   </body>
