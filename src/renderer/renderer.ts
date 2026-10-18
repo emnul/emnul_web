@@ -2,7 +2,8 @@
 // whose fragment shader is the Shader's raw `shader.glsl` (ADR 0009). three.js supplies the
 // `#version 300 es` line. The renderer supplies the Inputs each frame:
 // - `u_resolution`: pixels of whatever is being drawn to, the canvas or an off-screen target
-// - `u_time`: seconds the Shader has been running, not counting time spent paused
+// - `u_time`: seconds the Shader has been running, not counting time spent paused or
+//   in a hidden tab
 import {
   GLSL3,
   Mesh,
@@ -13,6 +14,7 @@ import {
   Vector2,
   WebGLRenderer,
   WebGLRenderTarget,
+  Timer,
 } from "three";
 
 // The plane spans clip space, so no camera matrices are needed.
@@ -56,36 +58,41 @@ export function createShaderRenderer(
   });
   const geometry = new PlaneGeometry(2, 2);
   const scene = new Scene().add(new Mesh(geometry, material));
-  const camera = new OrthographicCamera(-1, 1, 1, -1, 0, 1);
+  const camera = new OrthographicCamera(
+    -1, // left
+    1, // right
+    1, // top
+    -1, // bottom
+    -1, // near,
+    1, // far
+  );
+  const timer = new Timer();
+  timer.connect(canvas.ownerDocument);
+  let running = false;
 
-  // Seconds run before the current start, and when that start happened.
-  let runSeconds = 0;
-  let startedAt: number | undefined;
-  const elapsed = () =>
-    runSeconds +
-    (startedAt === undefined ? 0 : (performance.now() - startedAt) / 1000);
-
-  // Draws to the current target, which `u_resolution` must already describe.
+  // Draws to the current target: the canvas, or the off-screen one renderPixels sets.
   function draw() {
-    material.uniforms.u_time.value = elapsed();
+    const resolution = material.uniforms.u_resolution.value;
+    const target = webgl.getRenderTarget();
+    if (target) resolution.set(target.width, target.height);
+    else webgl.getDrawingBufferSize(resolution);
+    material.uniforms.u_time.value = timer.getElapsed();
     webgl.render(scene, camera);
-  }
-
-  function render() {
-    webgl.getDrawingBufferSize(material.uniforms.u_resolution.value);
-    draw();
   }
 
   return {
     start() {
-      if (startedAt !== undefined) return;
-      startedAt = performance.now();
-      webgl.setAnimationLoop(render);
+      if (running) return;
+      running = true;
+      // Without this, the first update after a pause counts the paused time as one long frame.
+      timer.reset();
+      webgl.setAnimationLoop(() => {
+        timer.update();
+        draw();
+      });
     },
     pause() {
-      if (startedAt === undefined) return;
-      runSeconds = elapsed();
-      startedAt = undefined;
+      running = false;
       webgl.setAnimationLoop(null);
     },
     resize(width, height) {
@@ -93,13 +100,12 @@ export function createShaderRenderer(
       webgl.setPixelRatio(window.devicePixelRatio);
       webgl.setSize(width, height, false);
       // A paused Shader would otherwise show a stretched frame until it's started again.
-      if (startedAt === undefined) render();
+      if (!running) draw();
     },
     renderPixels(width, height) {
       const target = new WebGLRenderTarget(width, height);
       const pixels = new Uint8Array(width * height * 4);
       try {
-        material.uniforms.u_resolution.value.set(width, height);
         webgl.setRenderTarget(target);
         draw();
         webgl.readRenderTargetPixels(target, 0, 0, width, height, pixels);
@@ -111,7 +117,7 @@ export function createShaderRenderer(
     },
     dispose() {
       webgl.setAnimationLoop(null);
-      startedAt = undefined;
+      timer.dispose();
       geometry.dispose();
       material.dispose();
       webgl.dispose();
