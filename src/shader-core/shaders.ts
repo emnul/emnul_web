@@ -31,7 +31,7 @@ export const shaderSchema = ({ image }: SchemaContext) =>
       // The Still is captured at `time` seconds and these Parameter values; the rest take their defaults.
       still: z.strictObject({
         image: image(),
-        time: z.number().nonnegative().default(1),
+        time: z.number().nonnegative().default(0),
         parameters: z.record(z.string(), z.number()).default({}),
       }),
       parameters: parametersSchema,

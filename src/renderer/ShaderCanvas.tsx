@@ -4,6 +4,8 @@ import { createShaderRenderer } from "./renderer";
 interface Props {
   /** The Shader's `shader.glsl`. */
   source: string;
+  /** Seconds `u_time` starts at: the Shader's `still.time`. */
+  startTime: number;
   className?: string;
 }
 
@@ -21,13 +23,13 @@ export default function ShaderCanvas(props: Props) {
 }
 
 // Separate from ShaderCanvas so its effect sits inside the StrictMode boundary.
-function Canvas({ source, className }: Props) {
+function Canvas({ source, startTime, className }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const renderer = createShaderRenderer(canvas, source);
+    const renderer = createShaderRenderer(canvas, source, startTime);
     const observer = new ResizeObserver(([entry]) => {
       if (!entry) return;
       renderer.resize(entry.contentRect.width, entry.contentRect.height);
@@ -39,7 +41,7 @@ function Canvas({ source, className }: Props) {
       observer.disconnect();
       renderer.dispose();
     };
-  }, [source]);
+  }, [source, startTime]);
 
   return <canvas ref={canvasRef} className={className} />;
 }

@@ -2,8 +2,8 @@
 // whose fragment shader is the Shader's raw `shader.glsl` (ADR 0009). three.js supplies the
 // `#version 300 es` line. The renderer supplies the Inputs each frame:
 // - `u_resolution`: pixels of whatever is being drawn to, the canvas or an off-screen target
-// - `u_time`: seconds the Shader has been running, not counting time spent paused or
-//   in a hidden tab
+// - `u_time`: seconds the Shader has been running, plus `startTime`, not counting time spent
+//   paused or in a hidden tab
 import {
   GLSL3,
   Mesh,
@@ -40,10 +40,14 @@ export interface ShaderRenderer {
   dispose(): void;
 }
 
-/** A renderer drawing `source`, a Shader's `shader.glsl`, into `canvas`. */
+/**
+ * A renderer drawing `source`, a Shader's `shader.glsl`, into `canvas`. `u_time` begins at
+ * `startTime`, the Shader's `still.time`, so the first frame matches the Still under it.
+ */
 export function createShaderRenderer(
   canvas: HTMLCanvasElement,
   source: string,
+  startTime: number,
 ): ShaderRenderer {
   const webgl = new WebGLRenderer({ canvas });
 
@@ -53,7 +57,7 @@ export function createShaderRenderer(
     fragmentShader: source,
     uniforms: {
       u_resolution: { value: new Vector2() },
-      u_time: { value: 0 },
+      u_time: { value: startTime },
     },
   });
   const geometry = new PlaneGeometry(2, 2);
@@ -76,7 +80,7 @@ export function createShaderRenderer(
     const target = webgl.getRenderTarget();
     if (target) resolution.set(target.width, target.height);
     else webgl.getDrawingBufferSize(resolution);
-    material.uniforms.u_time.value = timer.getElapsed();
+    material.uniforms.u_time.value = startTime + timer.getElapsed();
     webgl.render(scene, camera);
   }
 

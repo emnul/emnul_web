@@ -4,7 +4,7 @@ Bun is the package manager and script runner (`bun install`, `bun run …`, comm
 
 Testing: Vitest unit tests for pure renderer logic run in Workers Builds before `build`. Vitest browser mode with the Playwright provider, on WebKit and Chromium, covers real WebGL2 compilation: a Shader that compiles, and a compile error reported at the author's line. Uniform and syntax checks against the frontmatter run in the build (ADR 0009). Browser tests run locally only, through a Husky pre-push hook (`bun run test && bun run test:browser`). A pre-commit hook runs lint-staged with Prettier and ESLint, then `astro check`. `HUSKY=0` is set in Workers Builds.
 
-Stills are generated locally and committed: `node scripts/stills.ts` (run with `bun run stills`) opens a dev-only `/_harness/[slug]` route in Playwright, freezes `u_time` at the Shader's `still.time` (frontmatter, default 1.0), sets any `still.parameters` (other Parameters keep their defaults), and screenshots the canvas at 1600×900 with `deviceScaleFactor: 1`. Astro's `<Image>` produces the optimized variants at build time. Scripts are written in erasable-only TypeScript (`erasableSyntaxOnly`) so Node can run them directly.
+Stills are generated locally and committed: `node scripts/stills.ts` (run with `bun run stills`) opens a dev-only `/_harness/[slug]` route in Playwright, freezes `u_time` at the Shader's `still.time` (frontmatter, default 0), sets any `still.parameters` (other Parameters keep their defaults), and screenshots the canvas at 1600×900 with `deviceScaleFactor: 1`. Astro's `<Image>` produces the optimized variants at build time. Scripts are written in erasable-only TypeScript (`erasableSyntaxOnly`) so Node can run them directly.
 
 ## Considered Options
 
