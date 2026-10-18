@@ -26,18 +26,19 @@ See [ADR 0004](docs/adr/0004-public-repo-licensing.md) (repo and licences), [ADR
 
 ## Scripts
 
-| Script                 | What it does                                    |
-| ---------------------- | ----------------------------------------------- |
-| `bun install`          | Install dependencies                            |
-| `bun run dev`          | Dev server, with server code running in workerd |
-| `bun run build`        | Build Workers deployment output into `dist/`    |
-| `bun run preview`      | Serve the build locally                         |
-| `bun run check`        | Type check with `astro check`                   |
-| `bun run lint`         | ESLint                                          |
-| `bun run format`       | Format the tree with Prettier                   |
-| `bun run format:check` | Check formatting without writing                |
-| `bun run test`         | Vitest unit tests                               |
-| `bun run test:browser` | Vitest browser tests on WebKit and Chromium     |
+| Script                 | What it does                                                     |
+| ---------------------- | ---------------------------------------------------------------- |
+| `bun install`          | Install dependencies                                             |
+| `bun run dev`          | Dev server, with server code running in workerd                  |
+| `bun run build`        | Build Workers deployment output into `dist/`                     |
+| `bun run stills`       | Render each Shader's Still into its directory; commit the result |
+| `bun run preview`      | Serve the build locally                                          |
+| `bun run check`        | Type check with `astro check`                                    |
+| `bun run lint`         | ESLint                                                           |
+| `bun run format`       | Format the tree with Prettier                                    |
+| `bun run format:check` | Check formatting without writing                                 |
+| `bun run test`         | Vitest unit tests                                                |
+| `bun run test:browser` | Vitest browser tests on WebKit and Chromium                      |
 
 ## Licences
 

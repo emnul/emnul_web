@@ -11,13 +11,21 @@ function shader(id: string, parameters: Parameter[] = []) {
   return { id, data: { parameters } };
 }
 
-/** Keys each source by its `shader.glsl` path, as `import.meta.glob` does. */
-function byPath(sourcesBySlug: Record<string, string>) {
+/** Keys each file by its path in the Shader's directory, as `import.meta.glob` does. */
+function byPath<File>(filesBySlug: Record<string, File>, file = "shader.glsl") {
   return Object.fromEntries(
-    Object.entries(sourcesBySlug).map(([slug, source]) => [
-      `/src/content/shaders/${slug}/shader.glsl`,
-      source,
+    Object.entries(filesBySlug).map(([slug, contents]) => [
+      `/src/content/shaders/${slug}/${file}`,
+      contents,
     ]),
+  );
+}
+
+/** A rendered `still.png` for each slug, standing in for its image metadata. */
+function stills(...slugs: string[]) {
+  return byPath(
+    Object.fromEntries(slugs.map((slug) => [slug, `${slug} still`])),
+    "still.png",
   );
 }
 
@@ -28,10 +36,11 @@ test("returns each Shader with its source when every Shader passes", () => {
     checkShaderSources(
       [shader("drift"), shader("tide")],
       byPath({ drift: passing, tide: other }),
+      stills("drift", "tide"),
     ),
   ).toEqual([
-    { shader: shader("drift"), source: passing },
-    { shader: shader("tide"), source: other },
+    { shader: shader("drift"), source: passing, still: "drift still" },
+    { shader: shader("tide"), source: other, still: "tide still" },
   ]);
 });
 
@@ -39,7 +48,11 @@ test("reports a problem in shader.glsl at its line", () => {
   const stray = passing.replace("out vec4", "uniform float speed;\nout vec4");
 
   expect(() =>
-    checkShaderSources([shader("drift")], byPath({ drift: stray })),
+    checkShaderSources(
+      [shader("drift")],
+      byPath({ drift: stray }),
+      stills("drift"),
+    ),
   ).toThrow(
     new Error(
       [
@@ -62,7 +75,11 @@ const scale: Parameter = {
 
 test("reports a Parameter with no uniform at the Shader's index.mdx", () => {
   expect(() =>
-    checkShaderSources([shader("drift", [scale])], byPath({ drift: passing })),
+    checkShaderSources(
+      [shader("drift", [scale])],
+      byPath({ drift: passing }),
+      stills("drift"),
+    ),
   ).toThrow(
     new Error(
       [
@@ -78,6 +95,7 @@ test("reports a Shader with no shader.glsl alongside every other problem", () =>
     checkShaderSources(
       [shader("drift", [scale]), shader("nope")],
       byPath({ drift: passing }),
+      stills("drift", "nope"),
     ),
   ).toThrow(
     new Error(
@@ -95,6 +113,7 @@ test("reports a shader.glsl that no Shader's index.mdx sits next to", () => {
     checkShaderSources(
       [shader("drift")],
       byPath({ drift: passing, orphan: passing }),
+      stills("drift"),
     ),
   ).toThrow(
     new Error(
@@ -107,7 +126,24 @@ test("reports a shader.glsl that no Shader's index.mdx sits next to", () => {
 });
 
 test("fails when the collection has no Shaders, as a wrong loader path would leave it", () => {
-  expect(() => checkShaderSources([], byPath({ drift: passing }))).toThrow(
-    new Error("No Shaders found under src/content/shaders/"),
+  expect(() =>
+    checkShaderSources([], byPath({ drift: passing }), stills()),
+  ).toThrow(new Error("No Shaders found under src/content/shaders/"));
+});
+
+test("reports a Shader whose Still hasn't been rendered", () => {
+  expect(() =>
+    checkShaderSources(
+      [shader("drift"), shader("tide")],
+      byPath({ drift: passing, tide: passing }),
+      stills("drift"),
+    ),
+  ).toThrow(
+    new Error(
+      [
+        "Shader check failed:",
+        "src/content/shaders/tide/still.png: missing; run `bun run stills`",
+      ].join("\n"),
+    ),
   );
 });
