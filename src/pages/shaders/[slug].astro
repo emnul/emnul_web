@@ -1,6 +1,7 @@
 ---
 import type { GetStaticPaths } from "astro";
 import { getImage, Image } from "astro:assets";
+import { render } from "astro:content";
 import ShaderCanvas from "../../renderer/ShaderCanvas";
 import { checkedShaders } from "../../shader-core/shaders";
 import "../../styles/global.css";
@@ -23,6 +24,8 @@ const ogImage = await getImage({
   format: "jpg",
 });
 const ogImageUrl = new URL(ogImage.src, Astro.site).href;
+// The Write-up: the body of `index.mdx`. A Shader without one renders nothing here.
+const { Content: WriteUp } = await render(shader);
 ---
 
 <html lang="en">
@@ -68,6 +71,7 @@ const ogImageUrl = new URL(ogImage.src, Astro.site).href;
           class="absolute inset-0 size-full object-cover"
         />
       </ShaderCanvas>
+      <WriteUp />
       <pre><code class="language-glsl">{source}</code></pre>
     </main>
   </body>
