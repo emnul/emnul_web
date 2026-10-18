@@ -1,5 +1,6 @@
 ---
 import type { GetStaticPaths } from "astro";
+import ShaderCanvas from "../../renderer/ShaderCanvas";
 import { checkedShaders } from "../../shader-core/shaders";
 import "../../styles/global.css";
 
@@ -26,6 +27,11 @@ const { title, description } = shader.data;
     <main class="prose mx-auto p-8">
       <h1>{title}</h1>
       <p>{description}</p>
+      <ShaderCanvas
+        client:visible
+        source={source}
+        className="not-prose block aspect-video w-full"
+      />
       <pre><code class="language-glsl">{source}</code></pre>
     </main>
   </body>
