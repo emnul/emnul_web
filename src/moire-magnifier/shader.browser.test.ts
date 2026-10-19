@@ -16,6 +16,7 @@ const renderer = createShaderRenderer(document.createElement("canvas"), {
     viewAngle: 0,
     icon: 0,
     noise: 0,
+    streak: 0,
   },
 });
 
@@ -86,4 +87,37 @@ test("with noise off every lens shows one colour, and with it on almost none do"
 
 test("noise is the same every time a frame renders", () => {
   expect(render({ noise: 0.1 })).toEqual(render({ noise: 0.1 }));
+});
+
+test("a streak lays ink in a band across the frame, as narrow as it's printed", () => {
+  const clean = render();
+  const streaked = render({ streak: 1 });
+
+  let lighter = 0;
+  let crossed = 0;
+  let widest = 0;
+  for (let y = 0; y < ANALYSIS_SIZE; y++) {
+    let first = ANALYSIS_SIZE;
+    let last = -1;
+    for (let x = 0; x < ANALYSIS_SIZE; x++) {
+      const i = (y * ANALYSIS_SIZE + x) * 4;
+      for (let c = 0; c < 3; c++) {
+        if (streaked[i + c] === clean[i + c]) continue;
+        if (streaked[i + c] > clean[i + c]) lighter++;
+        first = Math.min(first, x);
+        last = Math.max(last, x);
+      }
+    }
+    if (last < 0) continue;
+    crossed++;
+    widest = Math.max(widest, last - first + 1);
+  }
+
+  // Ink, so it never lightens a pixel.
+  expect(lighter).toBe(0);
+  // Across the frame: in nearly every row, missing only where the band runs inside an icon's
+  // ink.
+  expect(crossed).toBeGreaterThan(0.9 * ANALYSIS_SIZE);
+  // A few lenses wide, as printed. Magnified, as the icons are, it would be twenty times wider.
+  expect(widest).toBeLessThanOrEqual(30);
 });

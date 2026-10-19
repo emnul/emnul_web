@@ -20,6 +20,9 @@ uniform int icon;
 // Grey noise added to every pixel, as a camera would, with this standard deviation as a fraction
 // of white. Each pixel's noise depends on its position alone, so a frame renders the same twice.
 uniform float noise;
+// How much ink a streak lays across the icon layer, as a fault in printing it might: 0 none, 1 as
+// dense as the icons' ink.
+uniform float streak;
 
 out vec4 fragColor;
 
@@ -33,6 +36,13 @@ const float FOCAL_LENGTH = 6.0;
 // Half the width of an icon's soft edge, in icon pitches: about one step between neighbouring
 // lenses' sample points at a scale ratio of 0.95. It stands in for the lens's focused spot.
 const float EDGE = 0.02;
+// The streak's centre line on the icon layer, in design units: through a point right of centre,
+// leaning 20° from vertical. It's printed on the icon layer, so it turns and moves with it.
+const vec2 STREAK_POINT = vec2(200.0, 0.0);
+// At right angles to the line: (cos 20°, −sin 20°).
+const vec2 STREAK_NORMAL = vec2(0.93969262, -0.34202014);
+// Two and a half lenses.
+const float STREAK_HALF_WIDTH = 7.5;
 
 const vec3 PAPER = vec3(0.95, 0.93, 0.87);
 const vec3 INK = vec3(0.09, 0.14, 0.33);
@@ -108,10 +118,15 @@ vec3 shade(vec2 fragCoord) {
     vec2 q = focus - vec2(offset * iconPitch, 0.0);
     float angle = radians(rotation);
     // GLSL fills a mat2 by columns, so this is a rotation by −angle.
-    vec2 tile = mat2(cos(angle), -sin(angle), sin(angle), cos(angle)) * q / iconPitch;
+    vec2 printed = mat2(cos(angle), -sin(angle), sin(angle), cos(angle)) * q;
+    vec2 tile = printed / iconPitch;
     // Icons are centred on whole tile coordinates, so the centre lens sees an icon's centre.
     vec2 cell = fract(tile + 0.5) - 0.5;
     float ink = 1.0 - smoothstep(-EDGE, EDGE, iconDistance(cell));
+    // The streak doesn't repeat from icon to icon as they do, so the lenses don't magnify it:
+    // they show it where it's printed, as wide as it's printed.
+    float outside = abs(dot(printed - STREAK_POINT, STREAK_NORMAL)) - STREAK_HALF_WIDTH;
+    ink = max(ink, streak * (1.0 - smoothstep(-EDGE, EDGE, outside / iconPitch)));
     return mix(PAPER, INK, ink);
 }
 

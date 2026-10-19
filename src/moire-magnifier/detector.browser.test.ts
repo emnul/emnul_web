@@ -1,8 +1,8 @@
 // The detector's accuracy on the real Shader: each case renders shader.glsl through the renderer
 // the page uses, with a known scale error and rotation injected through its Parameters, with and
-// without noise, and checks what the detector reads from the pixels alone. Nothing else draws
-// the test images, so the test can't pass against a model of the optics that disagrees with the
-// Shader.
+// without noise or a streak, and checks what the detector reads from the pixels alone. Nothing
+// else draws the test images, so the test can't pass against a model of the optics that disagrees
+// with the Shader.
 import { afterAll, expect, test } from "vitest";
 import source from "../content/shaders/moire-magnifier/shader.glsl?raw";
 import { createShaderRenderer } from "../renderer/renderer";
@@ -23,6 +23,7 @@ const renderer = createShaderRenderer(document.createElement("canvas"), {
     viewAngle: 0,
     icon: 0,
     noise: 0,
+    streak: 0,
   },
 });
 
@@ -40,6 +41,8 @@ interface Misregistration {
   viewAngle?: number;
   /** The noise's standard deviation, as a fraction of white; 0 if left out. */
   noise?: number;
+  /** The streak's ink density; 0 if left out. */
+  streak?: number;
   pass: boolean;
 }
 
@@ -77,6 +80,10 @@ const misregistrations: Misregistration[] = [
 const NOISE = 1;
 const noisy = misregistrations.map((m) => ({ ...m, noise: NOISE }));
 
+// A streak at full density. It isn't periodic, so it adds a line through the spectrum's centre
+// rather than a peak; where the line crosses a moiré peak it pulls on it a little.
+const streaked = misregistrations.map((m) => ({ ...m, streak: 1 }));
+
 /** Renders the Shader at these Parameter values, the rest as they started. */
 function render(values: Record<string, number>) {
   const pixels = renderer.renderPixels(ANALYSIS_SIZE, ANALYSIS_SIZE, values);
@@ -96,6 +103,7 @@ function read(
     offset = 0,
     viewAngle = 0,
     noise = 0,
+    streak = 0,
   }: Misregistration,
   icon: number,
 ) {
@@ -106,6 +114,7 @@ function read(
     viewAngle,
     icon,
     noise,
+    streak,
   });
   const reading = detect([{ pixels }], design);
   if (reading.status !== "ok") {
@@ -124,11 +133,12 @@ function name(m: Misregistration) {
       ? `, offset ${m.offset ?? 0}, viewing angle ${m.viewAngle ?? 0}°`
       : "";
   const noise = m.noise ? `, noise σ ${m.noise}` : "";
-  return `scale error ${signed(m.scaleError * 100, 1)}%, rotation ${signed(m.rotation, 2)}°${moved}${noise}`;
+  const streak = m.streak ? `, streak ${m.streak}` : "";
+  return `scale error ${signed(m.scaleError * 100, 1)}%, rotation ${signed(m.rotation, 2)}°${moved}${noise}${streak}`;
 }
 
 test.for(
-  [...misregistrations, ...noisy].flatMap((m) =>
+  [...misregistrations, ...noisy, ...streaked].flatMap((m) =>
     icons.map(
       (icon, index) =>
         [
