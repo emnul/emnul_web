@@ -1,7 +1,8 @@
 // The detector's accuracy on the real Shader: each case renders shader.glsl through the renderer
-// the page uses, with a known scale error and rotation injected through its Parameters, and
-// checks what the detector reads from the pixels alone. Nothing else draws the test images, so
-// the test can't pass against a model of the optics that disagrees with the Shader.
+// the page uses, with a known scale error and rotation injected through its Parameters, with and
+// without noise or a streak, and checks what the detector reads from the pixels alone. Nothing
+// else draws the test images, so the test can't pass against a model of the optics that disagrees
+// with the Shader.
 import { afterAll, expect, test } from "vitest";
 import source from "../content/shaders/moire-magnifier/shader.glsl?raw";
 import { createShaderRenderer } from "../renderer/renderer";
@@ -26,6 +27,8 @@ const renderer = createShaderRenderer(document.createElement("canvas"), {
     offset: 0,
     viewAngle: 0,
     icon: 0,
+    noise: 0,
+    streak: 0,
   },
 });
 
@@ -41,6 +44,10 @@ interface Misregistration {
   offset?: number;
   /** Degrees; 0 if left out. */
   viewAngle?: number;
+  /** The noise's standard deviation, as a fraction of white; 0 if left out. */
+  noise?: number;
+  /** The streak's ink density; 0 if left out. */
+  streak?: number;
   pass: boolean;
 }
 
@@ -71,6 +78,17 @@ const misregistrations: Misregistration[] = [
     pass: false,
   },
 ];
+
+// Noise at the slider's maximum: a standard deviation as large as the whole range from black to
+// white. Averaging 4×4 blocks, then the whole frame into each bin of the spectrum, spreads it
+// thinly, far below the moiré's peaks, so it barely moves a reading. Both views get the same
+// noise, since it depends on the pixel alone.
+const NOISE = 1;
+const noisy = misregistrations.map((m) => ({ ...m, noise: NOISE }));
+
+// A streak at full density. It isn't periodic, so it adds a line through the spectrum's centre
+// rather than a peak; where the line crosses a moiré peak it pulls on it a little.
+const streaked = misregistrations.map((m) => ({ ...m, streak: 1 }));
 
 /** Renders the Shader at these Parameter values, the rest as they started. */
 function render(values: Record<string, number>) {
@@ -109,7 +127,14 @@ function readAt(values: { viewAngle: number } & Record<string, number>) {
 
 /** Renders a misregistration with an icon and reads it, as the page does on release. */
 function read(
-  { scaleError, rotation, offset = 0, viewAngle = 0 }: Misregistration,
+  {
+    scaleError,
+    rotation,
+    offset = 0,
+    viewAngle = 0,
+    noise = 0,
+    streak = 0,
+  }: Misregistration,
   icon: number,
 ) {
   return readAt({
@@ -118,6 +143,8 @@ function read(
     offset,
     viewAngle,
     icon,
+    noise,
+    streak,
   });
 }
 
@@ -135,11 +162,13 @@ function name(m: Misregistration) {
     m.offset || m.viewAngle
       ? `, offset ${m.offset ?? 0}, viewing angle ${m.viewAngle ?? 0}°`
       : "";
-  return `scale error ${signed(m.scaleError * 100, 1)}%, rotation ${signed(m.rotation, 2)}°${moved}`;
+  const noise = m.noise ? `, noise σ ${m.noise}` : "";
+  const streak = m.streak ? `, streak ${m.streak}` : "";
+  return `scale error ${signed(m.scaleError * 100, 1)}%, rotation ${signed(m.rotation, 2)}°${moved}${noise}${streak}`;
 }
 
 test.for(
-  misregistrations.flatMap((m) =>
+  [...misregistrations, ...noisy, ...streaked].flatMap((m) =>
     icons.map(
       (icon, index) =>
         [
@@ -178,15 +207,23 @@ test.for(misregistrations.map((m) => [name(m), m] as const))(
 );
 
 // Fewer than 2.5 moiré periods across the frame. A harmonic further out could still be found,
-// and would read as a smaller scale error.
+// and would read as a smaller scale error; so could a peak of the noise, and pass.
 test.for(
-  [0.99, 0.995, 1.005, 1.01].flatMap((scaleRatio) =>
-    icons.map((icon, index) => [scaleRatio, icon, index] as const),
+  [0, NOISE].flatMap((noise) =>
+    [0.99, 0.995, 1.005, 1.01].flatMap((scaleRatio) =>
+      icons.map((icon, index) => [scaleRatio, icon, noise, index] as const),
+    ),
   ),
 )(
-  "scale ratio %d, %s: too near 1 to measure, and fails",
-  ([scaleRatio, , icon]) => {
-    const reading = detectAt({ scaleRatio, rotation: 0, viewAngle: 0, icon });
+  "scale ratio %d, %s, noise σ %d: too near 1 to measure, and fails",
+  ([scaleRatio, , noise, icon]) => {
+    const reading = detectAt({
+      scaleRatio,
+      rotation: 0,
+      viewAngle: 0,
+      icon,
+      noise,
+    });
 
     expect(reading.status).toBe("out-of-range");
     expect(reading.pass).toBe(false);
@@ -200,6 +237,8 @@ interface Side {
   rotation: number;
   /** Degrees; 0 if left out. */
   viewAngle?: number;
+  /** The noise's standard deviation, as a fraction of white; 0 if left out. */
+  noise?: number;
 }
 
 // Scale ratios s and s/(2s − 1) are twins: the icon turned over at one draws the same picture as
@@ -221,16 +260,22 @@ const sides: Side[] = [
   { scaleRatio: 1.1, rotation: 2, viewAngle: -30 },
 ];
 
-function readSide({ scaleRatio, rotation, viewAngle = 0 }: Side, icon: number) {
-  return readAt({ scaleRatio, rotation, offset: 0, viewAngle, icon });
+// The sign under noise too, with the same noise in both views.
+const noisySides = sides.map((side) => ({ ...side, noise: NOISE }));
+
+function readSide(
+  { scaleRatio, rotation, viewAngle = 0, noise = 0 }: Side,
+  icon: number,
+) {
+  return readAt({ scaleRatio, rotation, offset: 0, viewAngle, icon, noise });
 }
 
-function nameSide({ scaleRatio, rotation, viewAngle = 0 }: Side) {
-  return `scale ratio ${scaleRatio}, rotation ${signed(rotation, 2)}°, viewing angle ${viewAngle}°`;
+function nameSide({ scaleRatio, rotation, viewAngle = 0, noise }: Side) {
+  return `scale ratio ${scaleRatio}, rotation ${signed(rotation, 2)}°, viewing angle ${viewAngle}°${noise ? `, noise σ ${noise}` : ""}`;
 }
 
 test.for(
-  sides.flatMap((side) =>
+  [...sides, ...noisySides].flatMap((side) =>
     icons.map(
       (icon, index) =>
         [

@@ -43,6 +43,20 @@ parameters:
     label: Icon
     options: [Letter, Star, Lines]
     default: 0
+  - type: number
+    name: noise
+    label: Noise (σ, fraction of white)
+    default: 0
+    min: 0
+    max: 1
+    step: 0.01
+  - type: number
+    name: streak
+    label: Streak (ink density)
+    default: 0
+    min: 0
+    max: 1
+    step: 0.01
 ---
 
 Each lens above shows a single colour, yet together they draw large letters. Under the lenses, a layer of tiny icons repeats slightly more finely than the lenses do, and that 5% mismatch is enough to magnify the icons twentyfold. This is a moiré magnifier, the optics behind some banknote security features. It is also very sensitive to how well its two layers line up, and that sensitivity can be measured from the image alone.
@@ -143,9 +157,15 @@ One image can't tell. Every peak at _q_ has a twin at −*q*, and reading the me
 
 Two views a known tilt apart can tell. Tilting by 13° moves every lens's focus about a quarter of an icon pitch across the icon layer. The lenses sample the icon layer at their foci, so that turns the phase of the peak at _q_ by about a quarter of a cycle one way, and the phase at −*q* as far the other way: a sinking image moves with the viewer and a floating one against them. The detector compares the peak's phase at the same frequency in both views, as in [Takeda et al.'s fringe analysis](https://doi.org/10.1364/JOSA.72.000156), and the direction it turns says whether the peak is _q_ or −*q*. Then it inverts the right one, so it reads 1.056 as a +11% scale error that floats rather than as the design. The tilt is kept well short of half an icon pitch, where the phase would turn half a cycle and either direction would look the same.
 
-### Noise and defects
+### Noise
 
-Random noise in the image spreads thinly across the whole spectrum, so it threatens which peak is picked more than where that peak lies. A streak printed across the icon layer isn't periodic, so the lenses don't magnify it: it adds a line of energy through the spectrum's centre rather than a peak. Optional noise and streak Parameters are planned, to show this on the page.
+The Noise Control adds grey noise to every pixel, as a camera's sensor would, with a standard deviation _σ_ given as a fraction of white. Each pixel's noise comes from a hash of its position, so a frame comes out the same every time it's rendered, a measurement can be repeated, and the detector's two views get the same noise.
+
+Noise spreads thinly across the whole spectrum, while the moiré gathers into a few peaks: averaging 4 × 4 blocks cuts the noise to a quarter, and every bin of the spectrum sums the whole frame. So noise threatens which peak is picked more than where that peak lies. Even at _σ_ = 1, the Control's maximum, where clipping at black and white has cost the moiré more than half its contrast, a typical bin of the spectrum holds about a sixtieth of the moiré's peak. The tests repeat every case at _σ_ = 1 and still read each to within 0.021% and 0.006° with the right answer to sinking or floating, and still find nothing to measure near _s_ = 1.
+
+### Streaks
+
+The Streak Control prints a line of ink across the icon layer, two and a half lenses wide and leaning 20° from vertical, as a fault in printing might, from none to as dense as the icons' ink. The icons repeat and the streak doesn't, so the lenses don't magnify it: they show it where it's printed and as wide as it's printed, and it turns and moves with the icon layer while the magnified image swims. In the spectrum it adds a line of energy through the centre, at right angles to the streak, rather than a peak. Where that line crosses a moiré peak it pulls on it slightly, so a full-density streak costs some accuracy, but the tests repeat the cases near the design with one and still read each to within 0.033% and 0.009°.
 
 ## Limits
 
@@ -154,7 +174,7 @@ Random noise in the image spreads thinly across the whole spectrum, so it threat
 - **Sinking or floating needs a second view at a known tilt.** A camera would need two frames at measured angles.
 - **The lens pitch is taken as known.** A real system would measure it from the lens grid's own peaks, and errors in it matter little, as above.
 - **The icon must have a fundamental.** An icon that repeats within its own tile, such as evenly spaced bars filling it, has no peak at the true period, so its image reads as a shorter period and the wrong _s_. That's why the Lines icon sits inside a disc.
-- **The images are ideal**: perfectly focused lenses, a distant viewer, a flat sheet, even lighting and exact pitches.
+- **The images are ideal** apart from the optional noise and streak: perfectly focused lenses, a distant viewer, a flat sheet, even lighting and exact pitches.
 
 ## Moving the measurement to the GPU
 
