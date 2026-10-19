@@ -6,9 +6,10 @@ import {
   clearOfQuarterTurn,
   design,
   NOMINAL_SCALE_RATIO,
+  signOf,
   tiltedViewAngle,
 } from "./design";
-import { detect, type Sign, type View } from "./detector";
+import { detect, type View } from "./detector";
 import DetectorPanel, { type Reading } from "./DetectorPanel";
 
 /**
@@ -66,11 +67,4 @@ function measure(renderer: ShaderRenderer, values: ParameterValues): Reading {
     reliable: clearOfQuarterTurn(values.scaleRatio, values.rotation),
     milliseconds: performance.now() - started,
   };
-}
-
-/** Whether the image sinks or floats at this scale ratio; at exactly 1 it does neither. */
-function signOf(scaleRatio: number): Sign | undefined {
-  if (scaleRatio < 1) return "sinks";
-  if (scaleRatio > 1) return "floats";
-  return undefined;
 }

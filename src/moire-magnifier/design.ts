@@ -2,7 +2,7 @@
 // detector's accuracy test both read it from here. The Shader can't import it, so each value
 // mirrors a constant in src/content/shaders/moire-magnifier/shader.glsl or its `index.mdx`; a
 // render at the nominal scale ratio reading as anything but no error means the two have drifted.
-import type { Design } from "./detector";
+import type { Design, Sign } from "./detector";
 
 /** Side of the square frame the detector analyses, in pixels: `ANALYSIS_SIZE` in shader.glsl. */
 export const ANALYSIS_SIZE = 1024;
@@ -23,6 +23,13 @@ export const design: Design = {
   focalLength: FOCAL_LENGTH,
   scaleTolerance: 0.004,
 };
+
+/** Whether the image sinks or floats at this scale ratio; at exactly 1 it does neither. */
+export function signOf(scaleRatio: number): Sign | undefined {
+  if (scaleRatio < 1) return "sinks";
+  if (scaleRatio > 1) return "floats";
+  return undefined;
+}
 
 /**
  * Degrees between the two views the detector compares. From any viewing angle in the Control's
