@@ -28,8 +28,10 @@ const ogImage = await getImage({
 const ogImageUrl = new URL(ogImage.src, Astro.site).href;
 // The Write-up: the body of `index.mdx`. A Shader without one renders nothing here.
 const { Content: WriteUp } = await render(shader);
+// Beneath a Write-up the source gets a heading, so it doesn't read as part of the Write-up's end.
+const hasWriteUp = Boolean(shader.body?.trim());
 
-const island = {
+const shaderCanvasProps = {
   source,
   startTime: shader.data.still.time,
   parameters: shader.data.parameters,
@@ -76,16 +78,17 @@ const stillImage: ComponentProps<typeof Image> = {
         // The Moiré magnifier's detector measures its renders, so it shares the canvas's island.
         // That island is its own, so the detector loads on no other page.
         shader.id === "moire-magnifier" ? (
-          <MoireMagnifier client:load {...island}>
+          <MoireMagnifier client:load {...shaderCanvasProps}>
             <Image {...stillImage} />
           </MoireMagnifier>
         ) : (
-          <ShaderCanvas client:load {...island}>
+          <ShaderCanvas client:load {...shaderCanvasProps}>
             <Image {...stillImage} />
           </ShaderCanvas>
         )
       }
       <WriteUp />
+      {hasWriteUp && <h2>Source</h2>}
       <pre><code class="language-glsl">{source}</code></pre>
     </main>
   </body>
