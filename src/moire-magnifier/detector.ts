@@ -4,18 +4,21 @@
 //
 // The icon layer at scale ratio s and rotation θ beats against the lens layer into a moiré
 // lattice whose fundamental frequency, as a complex number in cycles per pixel, is
-// q = (e^{iθ}/s − 1) / lensPitch. So the detector finds q and inverts it:
+// q = (e^{iθ}/s − 1) / lensPitch. So the detector finds ±q, tells which it is, and inverts q:
 // 1. luminance, averaged over 4×4 blocks to 256², then a Hann window with its mean removed
 // 2. a 256² FFT, and the nearest significant peak to zero frequency: a fundamental, since every
 //    other moiré peak is a sum of fundamentals and lies further out. Too near zero to measure,
 //    as when the scale ratio is near 1, the reading is out of range.
 // 3. a fine search of the exact DFT around that peak, to well under a hundredth of a bin
-// 4. e^{iθ}/s = 1 + q·lensPitch
+// 4. q or −q, from how the peak's phase turns between two views a small tilt apart
+// 5. e^{iθ}/s = 1 + q·lensPitch
 //
 // A square lens array makes one view ambiguous. The four fundamentals ±q, ±iq look alike, so the
-// detector takes the one within 45° of +x, which is q while the moiré lattice is turned less than
-// 45° (|θ| < 2.8° at s = 0.95, less nearer 1). Then q and −q give s on either side of 1 with the
-// same image up to the icon's orientation, so it takes the side the design is on.
+// detector takes the one within 45° of +x, which is q or −q while the moiré lattice is turned
+// less than 45° (|θ| < 2.8° at s = 0.95, less nearer 1). Then q and −q give s on either side of
+// 1, and the icon turned over at one draws the same picture as at the other. Tilting tells them
+// apart: it moves each lens's focus across the icon layer, which turns q's phase one way and
+// −q's the other.
 //
 // It runs on the CPU after readback, since the site renders each Shader in a single pass
 // (ADR 0009).
@@ -25,6 +28,8 @@ export interface Design {
   lensPitch: number;
   /** Over `lensPitch`, the scale ratio as designed. */
   iconPitch: number;
+  /** From the lenses to the icon layer, which lies in their focal plane. */
+  focalLength: number;
   /** The largest scale error that passes, as a fraction. */
   scaleTolerance: number;
 }
@@ -33,7 +38,16 @@ export interface Design {
 export interface View {
   /** RGBA bytes of a 1024² render, bottom row first, as WebGL reads them back. */
   pixels: Uint8Array;
+  /** Degrees the viewer has moved to the right of straight on: the Shader's `viewAngle`. */
+  viewAngle: number;
 }
+
+/**
+ * Where the magnified image appears. Below a scale ratio of 1 it sinks: it lies behind the
+ * surface, upright, and moves with the viewer. Above 1 it floats: in front of the surface,
+ * upside down, moving against the viewer.
+ */
+export type Sign = "sinks" | "floats";
 
 /** A point in the spectrum, in cycles across the frame, with v counting up the frame. */
 export interface Frequency {
@@ -61,6 +75,7 @@ export type Detection =
       scaleError: number;
       /** Degrees counter-clockwise from the lens layer to the icon layer. */
       rotation: number;
+      sign: Sign;
       /** Whether the scale error is within the design's tolerance. */
       pass: boolean;
       /** The moiré peak measured; it and its mirror through zero mark the spectrum. */
@@ -106,14 +121,39 @@ const SIGNIFICANT_OF_MEDIAN = 10;
 const FAINTEST = (1 * SIZE * SIZE) / 8;
 /** Bins each side of zero frequency in the spectrum returned for display. */
 const SPECTRUM_RADIUS = 32;
+/**
+ * How far the tilt between the views may move each lens's focus, in icon pitches. The phase
+ * turns by that fraction of a cycle, so it must stay clear of zero to have a clear sign, and
+ * short of half a cycle, past which it reads as the other sign, at every scale ratio in range.
+ */
+const LEAST_FOCUS_SHIFT = 0.1;
+const MOST_FOCUS_SHIFT = 0.4;
 
 /**
- * Measures the scale error and rotation between the lens and icon layers of one render of the
- * Moiré magnifier, against its design.
+ * Measures the scale error and rotation between the lens and icon layers of the Moiré
+ * magnifier, against its design, and whether its image sinks or floats. It reads them from two
+ * renders a small tilt apart: it measures the first and returns its spectrum, and the second
+ * tells it the sign.
  */
-export function detect(views: readonly [View], design: Design): Detection {
-  const [{ pixels }] = views;
-  const image = prepare(pixels);
+export function detect(
+  views: readonly [View, View],
+  design: Design,
+): Detection {
+  const [first, second] = views;
+  // How far each lens's focus moves right from the first view to the second. It lies f·tan α
+  // left of the lens's centre (see shader.glsl).
+  const focusShift =
+    design.focalLength *
+    (Math.tan(radians(first.viewAngle)) - Math.tan(radians(second.viewAngle)));
+  const pitches = Math.abs(focusShift) / design.iconPitch;
+  const usable = pitches >= LEAST_FOCUS_SHIFT && pitches <= MOST_FOCUS_SHIFT;
+  if (!usable) {
+    throw new RangeError(
+      `Expected views a tilt apart that moves each lens's focus ${LEAST_FOCUS_SHIFT}–${MOST_FOCUS_SHIFT} icon pitches, got ${pitches.toFixed(3)}`,
+    );
+  }
+
+  const image = prepare(first.pixels);
   const magnitudes = magnitudeSpectrum(image);
   const spectrum = crop(magnitudes);
   const coarse = coarsePeak(magnitudes);
@@ -122,24 +162,40 @@ export function detect(views: readonly [View], design: Design): Detection {
   }
 
   const peak = refine(image, coarse);
-  const nominal = design.iconPitch / design.lensPitch;
-  // In cycles per pixel, turned to the fundamental within 45° of +x, then to q's side of zero.
-  const [x, y] = towardsX(peak.u / FRAME, peak.v / FRAME);
-  const side = nominal < 1 ? 1 : -1;
-  // e^{iθ}/s = 1 + q·lensPitch
-  const re = 1 + side * x * design.lensPitch;
-  const im = side * y * design.lensPitch;
+  // The fundamental within 45° of +x: q or −q.
+  const [u, v] = towardsX(peak.u, peak.v);
+  // The lenses sample the icon layer at their foci, so q's phase is the phase of the icon
+  // layer's x frequency there. Moving every focus δ along x turns it by 2π·δ·cos θ / iconPitch,
+  // and turns −q's phase as far the other way.
+  const [before] = transform(image, [u], [v]);
+  const [after] = transform(prepare(second.pixels), [u], [v]);
+  const turn = Math.atan2(
+    after.im * before.re - after.re * before.im,
+    after.re * before.re + after.im * before.im,
+  );
+  const sign: Sign =
+    Math.sign(turn) === Math.sign(focusShift) ? "sinks" : "floats";
+
+  // q in cycles per pixel, then e^{iθ}/s = 1 + q·lensPitch.
+  const side = sign === "sinks" ? 1 : -1;
+  const re = 1 + (side * u * design.lensPitch) / FRAME;
+  const im = (side * v * design.lensPitch) / FRAME;
   const scaleRatio = 1 / Math.hypot(re, im);
-  const scaleError = scaleRatio / nominal - 1;
+  const scaleError = scaleRatio / (design.iconPitch / design.lensPitch) - 1;
   return {
     status: "ok",
     scaleRatio,
     scaleError,
     rotation: (Math.atan2(im, re) * 180) / Math.PI,
+    sign,
     pass: Math.abs(scaleError) <= design.scaleTolerance,
     peak,
     spectrum,
   };
+}
+
+function radians(degrees: number) {
+  return (degrees * Math.PI) / 180;
 }
 
 /**
@@ -341,6 +397,26 @@ const GRID = [-2, -1, 0, 1, 2];
 function bestOfGrid(image: Float64Array, centre: Frequency, step: number) {
   const us = GRID.map((i) => centre.u + i * step);
   const vs = GRID.map((j) => centre.v + j * step);
+  const power = transform(image, us, vs).map(({ re, im }) => re * re + im * im);
+  const best = power.indexOf(Math.max(...power));
+  const i = best % GRID.length;
+  const j = Math.floor(best / GRID.length);
+  const last = GRID.length - 1;
+  return {
+    frequency: { u: us[i], v: vs[j] },
+    onEdge: i % last === 0 || j % last === 0,
+  };
+}
+
+/**
+ * The image's exact DFT at each frequency of `us` × `vs`, in cycles across the frame, row by row
+ * from the first v.
+ */
+function transform(
+  image: Float64Array,
+  us: readonly number[],
+  vs: readonly number[],
+): { re: number; im: number }[] {
   const twiddles = (frequency: number) => {
     const cos = new Float64Array(SIZE);
     const sin = new Float64Array(SIZE);
@@ -355,10 +431,10 @@ function bestOfGrid(image: Float64Array, centre: Frequency, step: number) {
   const vTwiddles = vs.map(twiddles);
 
   // Separable: each row's DFT at every u, then down the rows at every v.
-  const rowsRe = new Float64Array(SIZE * GRID.length);
-  const rowsIm = new Float64Array(SIZE * GRID.length);
+  const rowsRe = new Float64Array(SIZE * us.length);
+  const rowsIm = new Float64Array(SIZE * us.length);
   for (let y = 0; y < SIZE; y++) {
-    for (let i = 0; i < GRID.length; i++) {
+    for (let i = 0; i < us.length; i++) {
       const { cos, sin } = uTwiddles[i];
       let re = 0;
       let im = 0;
@@ -367,32 +443,24 @@ function bestOfGrid(image: Float64Array, centre: Frequency, step: number) {
         re += value * cos[x];
         im += value * sin[x];
       }
-      rowsRe[y * GRID.length + i] = re;
-      rowsIm[y * GRID.length + i] = im;
+      rowsRe[y * us.length + i] = re;
+      rowsIm[y * us.length + i] = im;
     }
   }
 
-  let best = { power: -1, i: 0, j: 0 };
-  for (let j = 0; j < GRID.length; j++) {
-    const { cos, sin } = vTwiddles[j];
-    for (let i = 0; i < GRID.length; i++) {
+  return vTwiddles.flatMap(({ cos, sin }) =>
+    us.map((_, i) => {
       let re = 0;
       let im = 0;
       for (let y = 0; y < SIZE; y++) {
-        const rowRe = rowsRe[y * GRID.length + i];
-        const rowIm = rowsIm[y * GRID.length + i];
+        const rowRe = rowsRe[y * us.length + i];
+        const rowIm = rowsIm[y * us.length + i];
         re += rowRe * cos[y] - rowIm * sin[y];
         im += rowRe * sin[y] + rowIm * cos[y];
       }
-      const power = re * re + im * im;
-      if (power > best.power) best = { power, i, j };
-    }
-  }
-  const last = GRID.length - 1;
-  return {
-    frequency: { u: us[best.i], v: vs[best.j] },
-    onEdge: best.i % last === 0 || best.j % last === 0,
-  };
+      return { re, im };
+    }),
+  );
 }
 
 /** (x, y) turned by a multiple of 90° to lie within 45° of +x. */

@@ -1,14 +1,17 @@
-// What the detector read from the Moiré magnifier's last settled render, beside what the
-// Parameters set, so a visitor can judge it: scale error and rotation, the spectrum it measured
-// with the peak marked, and pass or fail.
+// What the detector read from the Moiré magnifier's last settled renders, beside what the
+// Parameters set, so a visitor can judge it: scale error, rotation and whether the image sinks
+// or floats, the spectrum it measured with the peak marked, and pass or fail.
 import { useEffect, useId, useRef } from "react";
-import type { Detection, Spectrum } from "./detector";
+import type { Detection, Sign, Spectrum } from "./detector";
 
 export interface Reading {
-  /** What the Parameters set: the scale error against the design, and rotation in degrees. */
-  truth: { scaleError: number; rotation: number };
+  /**
+   * What the Parameters set: the scale error against the design, rotation in degrees, and
+   * whether the image sinks or floats, which it does neither of at a scale ratio of exactly 1.
+   */
+  truth: { scaleError: number; rotation: number; sign?: Sign };
   detection: Detection;
-  /** Time taken to render the view, read it back and detect. */
+  /** Time taken to render the views, read them back and detect. */
   milliseconds: number;
 }
 
@@ -41,7 +44,8 @@ export default function DetectorPanel({ reading, tolerance }: Props) {
       </div>
       <p className="mt-1 text-sm text-gray-600">
         Measured from the rendered pixels alone, without knowing which icon is
-        drawn, each time you let go of a control. Passes within ±
+        drawn, each time you let go of a control. A second render a small tilt
+        away tells sinking from floating. Passes within ±
         {formatPercent(tolerance, 1, false)} scale error.
       </p>
 
@@ -76,7 +80,7 @@ export default function DetectorPanel({ reading, tolerance }: Props) {
                   {estimate ? formatPercent(estimate.scaleError, 2) : pending}
                 </td>
               </tr>
-              <tr>
+              <tr className="border-b border-gray-100">
                 <th scope="row" className="py-2 text-left font-medium">
                   Rotation
                 </th>
@@ -85,6 +89,17 @@ export default function DetectorPanel({ reading, tolerance }: Props) {
                 </td>
                 <td className="py-2 text-right">
                   {estimate ? formatDegrees(estimate.rotation) : pending}
+                </td>
+              </tr>
+              <tr>
+                <th scope="row" className="py-2 text-left font-medium">
+                  Image
+                </th>
+                <td className="py-2 text-right">
+                  {reading?.truth.sign ? signLabels[reading.truth.sign] : "—"}
+                </td>
+                <td className="py-2 text-right">
+                  {estimate ? signLabels[estimate.sign] : pending}
                 </td>
               </tr>
             </tbody>
@@ -97,7 +112,7 @@ export default function DetectorPanel({ reading, tolerance }: Props) {
           )}
           {reading && (
             <p className="mt-3 text-xs text-gray-500">
-              Rendered, read back and measured in{" "}
+              Rendered twice, read back and measured in{" "}
               {Math.round(reading.milliseconds)} ms.
             </p>
           )}
@@ -211,6 +226,8 @@ function SpectrumView({
     </figure>
   );
 }
+
+const signLabels: Record<Sign, string> = { sinks: "Sinks", floats: "Floats" };
 
 /** A fraction as a signed percentage, such as "+0.20%"; zero after rounding is unsigned. */
 function formatPercent(fraction: number, decimals: number, signed = true) {
