@@ -3,6 +3,7 @@ import type { ParameterValues, ShaderRenderer } from "../renderer/renderer";
 import { LiveShader, type ShaderCanvasProps } from "../renderer/ShaderCanvas";
 import {
   ANALYSIS_SIZE,
+  clearOfQuarterTurn,
   design,
   NOMINAL_SCALE_RATIO,
   tiltedViewAngle,
@@ -62,6 +63,7 @@ function measure(renderer: ShaderRenderer, values: ParameterValues): Reading {
       sign: signOf(values.scaleRatio),
     },
     detection,
+    reliable: clearOfQuarterTurn(values.scaleRatio, values.rotation),
     milliseconds: performance.now() - started,
   };
 }

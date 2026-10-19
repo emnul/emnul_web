@@ -38,3 +38,28 @@ const VIEW_TILT = 13;
 export function tiltedViewAngle(viewAngle: number): number {
   return viewAngle - Math.sign(viewAngle || 1) * VIEW_TILT;
 }
+
+/**
+ * Degrees the moiré lattice may turn from the lens grid before a reading is called unreliable:
+ * 5° short of the 45° past which the detector takes a quarter-turned peak for the fundamental
+ * (see detector.ts), so noise or a streak can't tip a reading over.
+ */
+const CLEAR_TURN = 40;
+
+/**
+ * Whether the detector can trust which of the moiré lattice's four fundamentals it inverts at
+ * this scale ratio and rotation (degrees): whether the lattice turns well short of 45°. Past
+ * that it reads a confident, wrong scale and rotation.
+ */
+export function clearOfQuarterTurn(
+  scaleRatio: number,
+  rotation: number,
+): boolean {
+  // The fundamental is q ∝ e^{iθ} − s, or −q, whichever lies nearer +x.
+  const theta = (rotation * Math.PI) / 180;
+  const turn = Math.atan2(
+    Math.abs(Math.sin(theta)),
+    Math.abs(Math.cos(theta) - scaleRatio),
+  );
+  return (turn * 180) / Math.PI < CLEAR_TURN;
+}
