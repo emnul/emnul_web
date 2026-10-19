@@ -10,6 +10,7 @@ import { join } from "node:path";
 import { chromium } from "playwright";
 import { createServer } from "vite";
 import { parse } from "yaml";
+import { withDefaults } from "../src/renderer/renderer.ts";
 
 // Must match `shadersDir` in src/shader-core/shaders.ts, which imports `astro:content` and so
 // can't be imported here.
@@ -57,10 +58,7 @@ async function readShaders() {
         const { parameters = [], still } = (parse(frontmatter) ??
           {}) as StillFrontmatter;
         // Each Parameter at its default, unless the Still sets it.
-        const values = {
-          ...Object.fromEntries(parameters.map((p) => [p.name, p.default])),
-          ...still?.parameters,
-        };
+        const values = withDefaults(parameters, still?.parameters);
         // Same default as `still.time` in shaderSchema.
         return { slug, dir, source, time: still?.time ?? 0, values };
       }),

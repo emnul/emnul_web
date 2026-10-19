@@ -11,6 +11,7 @@ import type { Parameter } from "../shader-core/contract";
 import Controls from "./Controls";
 import {
   createShaderRenderer,
+  withDefaults,
   type ParameterValues,
   type ShaderRenderer,
 } from "./renderer";
@@ -71,9 +72,7 @@ export function LiveShader({
 }: LiveShaderProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const rendererRef = useRef<ShaderRenderer>(null);
-  const [values, setValues] = useState<ParameterValues>(() =>
-    Object.fromEntries(parameters.map((p) => [p.name, p.default])),
-  );
+  const [values, setValues] = useState(() => withDefaults(parameters));
   // A renderer made after a Control has moved starts where the Control is.
   const currentValues = useEffectEvent(() => values);
   // Counts the changes the visitor has finished, so each one restarts the wait to settle.
