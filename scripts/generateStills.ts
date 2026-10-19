@@ -1,14 +1,16 @@
 // Renders each Shader's Still into `<slug>/still.png`, which is committed so the build needs no
 // browser (ADR 0005). Vite serves `stills-harness.html`, which bundles the site's own renderer,
-// and headless Chromium draws one frame of each Shader at its `still.time`.
+// and headless Chromium draws one frame of each Shader at its `still.time` and `still.parameters`,
+// with every other Parameter at its default.
 //
-// Run with `node scripts/generateStills.ts` (`bun run stills`) after changing a Shader's source or
-// `still.time`, and commit the result.
+// Run with `node scripts/generateStills.ts` (`bun run stills`) after changing a Shader's source,
+// its `still` settings or a Parameter's default, and commit the result.
 import { readdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { chromium } from "playwright";
 import { createServer } from "vite";
 import { parse } from "yaml";
+import { withDefaults } from "../src/renderer/renderer.ts";
 
 // Must match `shadersDir` in src/shader-core/shaders.ts, which imports `astro:content` and so
 // can't be imported here.
@@ -17,6 +19,7 @@ const width = 1600;
 const height = 900;
 
 interface StillFrontmatter {
+  parameters?: { name: string; default: number }[];
   still?: { time?: number; parameters?: Record<string, number> };
 }
 
@@ -26,6 +29,7 @@ declare global {
     renderStill(
       source: string,
       time: number,
+      values: Record<string, number>,
       width: number,
       height: number,
     ): string;
@@ -49,16 +53,14 @@ async function readShaders() {
         if (before !== "" || frontmatter === undefined) {
           throw new Error(`${dir}/index.mdx: no frontmatter`);
         }
-        // `astro build` validates the frontmatter afterwards; this reads only the Still's fields.
-        const { still } = (parse(frontmatter) ?? {}) as StillFrontmatter;
-        // The renderer doesn't set Parameters yet (#36), so a Still that sets one can't be honoured.
-        if (Object.keys(still?.parameters ?? {}).length > 0) {
-          throw new Error(
-            `${dir}/index.mdx: still.parameters isn't supported until the renderer sets Parameters`,
-          );
-        }
+        // `astro build` validates the frontmatter afterwards; this reads only the fields the Still
+        // needs.
+        const { parameters = [], still } = (parse(frontmatter) ??
+          {}) as StillFrontmatter;
+        // Each Parameter at its default, unless the Still sets it.
+        const values = withDefaults(parameters, still?.parameters);
         // Same default as `still.time` in shaderSchema.
-        return { slug, dir, source, time: still?.time ?? 0 };
+        return { slug, dir, source, time: still?.time ?? 0, values };
       }),
   );
 }
@@ -91,12 +93,12 @@ try {
     throw new Error(`stills-harness.html failed to load\n${errors.join("\n")}`);
   }
 
-  for (const { slug, dir, source, time } of shaders) {
+  for (const { slug, dir, source, time, values } of shaders) {
     errors.length = 0;
     const dataUrl = await page.evaluate(
-      ([source, time, width, height]) =>
-        window.renderStill(source, time, width, height),
-      [source, time, width, height] as const,
+      ([source, time, values, width, height]) =>
+        window.renderStill(source, time, values, width, height),
+      [source, time, values, width, height] as const,
     );
     if (errors.length > 0) {
       throw new Error(
