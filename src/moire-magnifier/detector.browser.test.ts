@@ -4,33 +4,20 @@
 // else draws the test images, so the test can't pass against a model of the optics that disagrees
 // with the Shader.
 import { afterAll, expect, test } from "vitest";
-import source from "../content/shaders/moire-magnifier/shader.glsl?raw";
-import { createShaderRenderer } from "../renderer/renderer";
 import {
   ANALYSIS_SIZE,
   design,
   NOMINAL_SCALE_RATIO,
+  signOf,
   tiltedViewAngle,
 } from "./design";
 import { detect } from "./detector";
+import { createMoireRenderer } from "./shaderUnderTest";
 
 // The `icon` Parameter's options, by index.
 const icons = ["Letter", "Star", "Lines"];
 
-// Never started, so every render is at `u_time` 0.
-const renderer = createShaderRenderer(document.createElement("canvas"), {
-  source,
-  startTime: 0,
-  values: {
-    scaleRatio: NOMINAL_SCALE_RATIO,
-    rotation: 0,
-    offset: 0,
-    viewAngle: 0,
-    icon: 0,
-    noise: 0,
-    streak: 0,
-  },
-});
+const renderer = createMoireRenderer();
 
 afterAll(() => renderer.dispose());
 
@@ -51,9 +38,10 @@ interface Misregistration {
   pass: boolean;
 }
 
-// Scale errors stay at least 0.2% from the ±0.4% tolerance, twice the accuracy asked for, so
-// pass or fail never hangs on the last digit. Rotations stay within the ±2° the slider allows.
-const misregistrations: Misregistration[] = [
+// Near the design. Scale errors stay at least 0.2% from the ±0.4% tolerance, twice the accuracy
+// asked for, so pass or fail never hangs on the last digit. Rotations stay within the ±2° the
+// slider allows.
+const nearDesign: Misregistration[] = [
   { scaleError: 0, rotation: 0, pass: true },
   { scaleError: 0.002, rotation: 0, pass: true },
   { scaleError: -0.002, rotation: 0, pass: true },
@@ -79,6 +67,32 @@ const misregistrations: Misregistration[] = [
   },
 ];
 
+// On either side of 1, out to the Scale ratio Control's ends. Scale ratios s and s/(2s − 1) are
+// twins: the icon turned over at one draws the same picture as at the other, so one view can't
+// tell them apart. 1.0556 is the design's twin, and 0.9545 is 1.05's. Rotations stay where the
+// moiré lattice turns less than 45° (see detector.ts), and viewing angles reach the Control's
+// ±30°. Every case is far outside the tolerance.
+const sides: Misregistration[] = [
+  { scaleRatio: 0.9, rotation: 2 },
+  { scaleRatio: 0.92, rotation: -1.5, viewAngle: 30 },
+  { scaleRatio: 0.9545, rotation: 0.5, viewAngle: -10 },
+  { scaleRatio: 0.97, rotation: -0.5 },
+  { scaleRatio: 0.98, rotation: 0.25, viewAngle: -30 },
+  { scaleRatio: 1.02, rotation: -0.25, viewAngle: 15 },
+  { scaleRatio: 1.03, rotation: 0.5 },
+  { scaleRatio: 1.05, rotation: -1, viewAngle: -20 },
+  { scaleRatio: 1.0556, rotation: 0 },
+  { scaleRatio: 1.0556, rotation: 1.5, viewAngle: 30 },
+  { scaleRatio: 1.08, rotation: -2 },
+  { scaleRatio: 1.1, rotation: 2, viewAngle: -30 },
+].map(({ scaleRatio, ...side }) => ({
+  ...side,
+  scaleError: scaleRatio / NOMINAL_SCALE_RATIO - 1,
+  pass: false,
+}));
+
+const misregistrations = [...nearDesign, ...sides];
+
 // Noise at the slider's maximum: a standard deviation as large as the whole range from black to
 // white. Averaging 4×4 blocks, then the whole frame into each bin of the spectrum, spreads it
 // thinly, far below the moiré's peaks, so it barely moves a reading. Both views get the same
@@ -86,11 +100,12 @@ const misregistrations: Misregistration[] = [
 const NOISE = 1;
 const noisy = misregistrations.map((m) => ({ ...m, noise: NOISE }));
 
-// A streak at full density. It isn't periodic, so it adds a line through the spectrum's centre
-// rather than a peak; where the line crosses a moiré peak it pulls on it a little.
-const streaked = misregistrations.map((m) => ({ ...m, streak: 1 }));
+// A streak at full density, near the design. It isn't periodic, so it adds a line through the
+// spectrum's centre rather than a peak; where the line crosses a moiré peak it pulls on it a
+// little.
+const streaked = nearDesign.map((m) => ({ ...m, streak: 1 }));
 
-/** Renders the Shader at these Parameter values, the rest as they started. */
+/** Renders the Shader at these Parameter values, the rest at their defaults. */
 function render(values: Record<string, number>) {
   const pixels = renderer.renderPixels(ANALYSIS_SIZE, ANALYSIS_SIZE, values);
   // three.js logs a compile error rather than throwing, and the failed render is one colour.
@@ -116,29 +131,15 @@ function detectAt(values: { viewAngle: number } & Record<string, number>) {
   );
 }
 
-/** As `detectAt`, expecting a reading. */
-function readAt(values: { viewAngle: number } & Record<string, number>) {
-  const reading = detectAt(values);
-  if (reading.status !== "ok") {
-    throw new Error(`expected a reading, got status "${reading.status}"`);
-  }
-  return reading;
+function scaleRatioOf(m: Misregistration) {
+  return NOMINAL_SCALE_RATIO * (1 + m.scaleError);
 }
 
 /** Renders a misregistration with an icon and reads it, as the page does on release. */
-function read(
-  {
-    scaleError,
-    rotation,
-    offset = 0,
-    viewAngle = 0,
-    noise = 0,
-    streak = 0,
-  }: Misregistration,
-  icon: number,
-) {
-  return readAt({
-    scaleRatio: NOMINAL_SCALE_RATIO * (1 + scaleError),
+function read(m: Misregistration, icon: number) {
+  const { rotation, offset = 0, viewAngle = 0, noise = 0, streak = 0 } = m;
+  const reading = detectAt({
+    scaleRatio: scaleRatioOf(m),
     rotation,
     offset,
     viewAngle,
@@ -146,11 +147,10 @@ function read(
     noise,
     streak,
   });
-}
-
-/** Where the image lies: below a scale ratio of 1 it sinks, above 1 it floats. */
-function sideOf(scaleRatio: number) {
-  return scaleRatio < 1 ? "sinks" : "floats";
+  if (reading.status !== "ok") {
+    throw new Error(`expected a reading, got status "${reading.status}"`);
+  }
+  return reading;
 }
 
 function signed(value: number, decimals: number) {
@@ -164,15 +164,26 @@ function name(m: Misregistration) {
       : "";
   const noise = m.noise ? `, noise σ ${m.noise}` : "";
   const streak = m.streak ? `, streak ${m.streak}` : "";
-  return `scale error ${signed(m.scaleError * 100, 1)}%, rotation ${signed(m.rotation, 2)}°${moved}${noise}${streak}`;
+  return `scale ratio ${scaleRatioOf(m).toFixed(4)} (error ${signed(m.scaleError * 100, 2)}%), rotation ${signed(m.rotation, 2)}°${moved}${noise}${streak}`;
 }
+
+/** The worst error read in each group of cases, by its defect, printed once they've all run. */
+const worst = new Map<string, { scale: number; rotation: number }>();
+
+afterAll(() => {
+  const lines = [...worst].map(
+    ([defect, { scale, rotation }]) =>
+      `  ${defect}: scale ${(scale * 100).toFixed(4)}%, rotation ${rotation.toFixed(4)}°`,
+  );
+  console.log(["Worst errors read, by defect:", ...lines].join("\n"));
+});
 
 test.for(
   [...misregistrations, ...noisy, ...streaked].flatMap((m) =>
     icons.map(
       (icon, index) =>
         [
-          `${name(m)}, ${icon}: reads within ±0.1% and 0.1°, and ${m.pass ? "passes" : "fails"}`,
+          `${name(m)}, ${icon}: ${signOf(scaleRatioOf(m))}, reads within ±0.1% and 0.1°, and ${m.pass ? "passes" : "fails"}`,
           m,
           index,
         ] as const,
@@ -180,13 +191,19 @@ test.for(
   ),
 )("%s", ([, m, icon]) => {
   const reading = read(m, icon);
+  const defect = m.streak ? "streak" : m.noise ? "noise" : "no defect";
+  const seen = worst.get(defect) ?? { scale: 0, rotation: 0 };
+  worst.set(defect, {
+    scale: Math.max(seen.scale, Math.abs(reading.scaleError - m.scaleError)),
+    rotation: Math.max(seen.rotation, Math.abs(reading.rotation - m.rotation)),
+  });
 
+  expect(reading.sign).toBe(signOf(scaleRatioOf(m)));
   expect(reading.scaleError).toBeGreaterThanOrEqual(m.scaleError - 0.001);
   expect(reading.scaleError).toBeLessThanOrEqual(m.scaleError + 0.001);
   expect(reading.rotation).toBeGreaterThanOrEqual(m.rotation - 0.1);
   expect(reading.rotation).toBeLessThanOrEqual(m.rotation + 0.1);
   expect(reading.pass).toBe(m.pass);
-  expect(reading.sign).toBe(sideOf(NOMINAL_SCALE_RATIO * (1 + m.scaleError)));
 });
 
 // The icons differ only in where the moiré's peaks are strong, so the readings differ only by
@@ -198,6 +215,7 @@ test.for(misregistrations.map((m) => [name(m), m] as const))(
     const spread = (values: number[]) =>
       Math.max(...values) - Math.min(...values);
 
+    expect(new Set(readings.map((r) => r.sign)).size).toBe(1);
     expect(spread(readings.map((r) => r.scaleError))).toBeLessThanOrEqual(
       0.0005,
     );
@@ -227,88 +245,6 @@ test.for(
 
     expect(reading.status).toBe("out-of-range");
     expect(reading.pass).toBe(false);
-  },
-);
-
-/** A scale ratio on either side of 1, out to the Scale ratio Control's ends. */
-interface Side {
-  scaleRatio: number;
-  /** Degrees. */
-  rotation: number;
-  /** Degrees; 0 if left out. */
-  viewAngle?: number;
-  /** The noise's standard deviation, as a fraction of white; 0 if left out. */
-  noise?: number;
-}
-
-// Scale ratios s and s/(2s − 1) are twins: the icon turned over at one draws the same picture as
-// at the other, so one view can't tell them apart. 1.0556 is the design's twin, and 0.9545 is
-// 1.05's. Rotations stay where the moiré lattice turns less than 45° (see detector.ts), and
-// viewing angles reach the Control's ±30°. Every case is far outside the tolerance.
-const sides: Side[] = [
-  { scaleRatio: 0.9, rotation: 2 },
-  { scaleRatio: 0.92, rotation: -1.5, viewAngle: 30 },
-  { scaleRatio: 0.9545, rotation: 0.5, viewAngle: -10 },
-  { scaleRatio: 0.97, rotation: -0.5 },
-  { scaleRatio: 0.98, rotation: 0.25, viewAngle: -30 },
-  { scaleRatio: 1.02, rotation: -0.25, viewAngle: 15 },
-  { scaleRatio: 1.03, rotation: 0.5 },
-  { scaleRatio: 1.05, rotation: -1, viewAngle: -20 },
-  { scaleRatio: 1.0556, rotation: 0 },
-  { scaleRatio: 1.0556, rotation: 1.5, viewAngle: 30 },
-  { scaleRatio: 1.08, rotation: -2 },
-  { scaleRatio: 1.1, rotation: 2, viewAngle: -30 },
-];
-
-// The sign under noise too, with the same noise in both views.
-const noisySides = sides.map((side) => ({ ...side, noise: NOISE }));
-
-function readSide(
-  { scaleRatio, rotation, viewAngle = 0, noise = 0 }: Side,
-  icon: number,
-) {
-  return readAt({ scaleRatio, rotation, offset: 0, viewAngle, icon, noise });
-}
-
-function nameSide({ scaleRatio, rotation, viewAngle = 0, noise }: Side) {
-  return `scale ratio ${scaleRatio}, rotation ${signed(rotation, 2)}°, viewing angle ${viewAngle}°${noise ? `, noise σ ${noise}` : ""}`;
-}
-
-test.for(
-  [...sides, ...noisySides].flatMap((side) =>
-    icons.map(
-      (icon, index) =>
-        [
-          `${nameSide(side)}, ${icon}: ${sideOf(side.scaleRatio)}, reads within ±0.1% and 0.1°, and fails`,
-          side,
-          index,
-        ] as const,
-    ),
-  ),
-)("%s", ([, side, icon]) => {
-  const reading = readSide(side, icon);
-  const scaleError = side.scaleRatio / NOMINAL_SCALE_RATIO - 1;
-
-  expect(reading.sign).toBe(sideOf(side.scaleRatio));
-  expect(reading.scaleError).toBeGreaterThanOrEqual(scaleError - 0.001);
-  expect(reading.scaleError).toBeLessThanOrEqual(scaleError + 0.001);
-  expect(reading.rotation).toBeGreaterThanOrEqual(side.rotation - 0.1);
-  expect(reading.rotation).toBeLessThanOrEqual(side.rotation + 0.1);
-  expect(reading.pass).toBe(false);
-});
-
-test.for(sides.map((side) => [nameSide(side), side] as const))(
-  "%s: every icon gives the same reading, to within 0.05% and 0.05°",
-  ([, side]) => {
-    const readings = icons.map((_, icon) => readSide(side, icon));
-    const spread = (values: number[]) =>
-      Math.max(...values) - Math.min(...values);
-
-    expect(new Set(readings.map((r) => r.sign)).size).toBe(1);
-    expect(spread(readings.map((r) => r.scaleError))).toBeLessThanOrEqual(
-      0.0005,
-    );
-    expect(spread(readings.map((r) => r.rotation))).toBeLessThanOrEqual(0.05);
   },
 );
 

@@ -28,6 +28,20 @@ void main() {
 /** A value for each Parameter, by name: a `number`'s value, or a `choice`'s option index. */
 export type ParameterValues = Readonly<Record<string, number>>;
 
+/**
+ * Each Parameter's value: as `values` sets it, else its default. Shared by the page, its Controls
+ * and the Stills script, which reads `parameters` from frontmatter.
+ */
+export function withDefaults(
+  parameters: readonly { name: string; default: number }[],
+  values: ParameterValues = {},
+): ParameterValues {
+  return {
+    ...Object.fromEntries(parameters.map((p) => [p.name, p.default])),
+    ...values,
+  };
+}
+
 export interface ShaderRendererOptions {
   /** The Shader's `shader.glsl`. */
   source: string;

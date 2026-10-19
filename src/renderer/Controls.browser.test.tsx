@@ -16,7 +16,7 @@ afterEach(() => {
 type Props = ComponentProps<typeof Controls>;
 
 /** Holds the values the Controls show, as a page does, so each change shows. */
-function Caller({ values: initial, onChange, ...props }: Props) {
+function StatefulControls({ values: initial, onChange, ...props }: Props) {
   const [values, setValues] = useState(initial);
   return (
     <Controls
@@ -37,7 +37,9 @@ function render(props: Omit<Props, "onChange">) {
     document.body.appendChild(document.createElement("div")),
   );
   roots.push(root);
-  flushSync(() => root.render(<Caller {...props} onChange={onChange} />));
+  flushSync(() =>
+    root.render(<StatefulControls {...props} onChange={onChange} />),
+  );
   return onChange;
 }
 

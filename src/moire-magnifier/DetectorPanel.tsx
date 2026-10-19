@@ -11,6 +11,11 @@ export interface Reading {
    */
   truth: { scaleError: number; rotation: number; sign?: Sign };
   detection: Detection;
+  /**
+   * Whether the Parameters keep the moiré lattice turned well short of 45°. Past that the
+   * detector inverts a quarter-turned peak, so its estimate is confidently wrong.
+   */
+  reliable: boolean;
   /** Time taken to render the views, read them back and detect. */
   milliseconds: number;
 }
@@ -108,6 +113,12 @@ export default function DetectorPanel({ reading, tolerance }: Props) {
             <p className="mt-3 text-sm text-gray-600">
               Too few moiré periods fit in the frame to measure: the scale ratio
               is too near 1.
+            </p>
+          )}
+          {estimate && !reading?.reliable && (
+            <p className="mt-3 text-sm text-gray-600">
+              Unreliable: these settings turn the moiré lattice near or past
+              45°, and past 45° the detector reads it as turned the other way.
             </p>
           )}
           {reading && (

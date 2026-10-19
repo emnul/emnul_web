@@ -4,7 +4,7 @@
 import { useEffect, useEffectEvent, useId, useRef } from "react";
 // Types only: the contract's schemas use Zod, which mustn't ship to the browser.
 import type { Parameter } from "../shader-core/contract";
-import type { ParameterValues } from "./renderer";
+import { withDefaults, type ParameterValues } from "./renderer";
 
 interface Props {
   /** The Shader's Parameters, in frontmatter order. */
@@ -31,6 +31,7 @@ export default function Controls({
 }: Props) {
   const root = useRef<HTMLDivElement>(null);
   const settle = useEffectEvent(() => onSettle?.());
+  const shown = withDefaults(parameters, values);
 
   // React's onChange follows the native `input` event, which fires all through a drag. The
   // native `change` event fires once the change is finished, and bubbles.
@@ -51,7 +52,7 @@ export default function Controls({
         <Control
           key={parameter.name}
           parameter={parameter}
-          value={values[parameter.name] ?? parameter.default}
+          value={shown[parameter.name]}
           onChange={(value) => onChange(parameter.name, value)}
         />
       ))}
