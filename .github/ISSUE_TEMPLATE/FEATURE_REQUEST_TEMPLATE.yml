@@ -1,0 +1,76 @@
+name: Feature request
+description: Propose a new feature for emnul.dev
+title: "feat: "
+labels: ["enhancement", "needs-triage"]
+assignees:
+  - emnul
+projects: ["emnul/1"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Default feature request template. If I'm too lazy to fill this out the feature probably isn't worth it.
+
+  - type: textarea
+    id: background
+    attributes:
+      label: Background
+      description: Establishes the general context needed to understand the request - current behaviour, related issues/ADRs, prior discussion, links.
+      placeholder: |
+        - Currently, ...
+        - Related: #123, docs/adr/0001-...
+    validations:
+      required: true
+
+  - type: textarea
+    id: motivation
+    attributes:
+      label: Motivation
+      description: Why do I want this? What problem does it solve, and for whom?
+      placeholder: Visitors can't ... which means ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: scope
+    attributes:
+      label: Scope
+      description: What is in scope for this feature, and what is explicitly out of scope?
+      value: |
+        **In scope**
+        -
+
+        **Out of scope**
+        -
+    validations:
+      required: true
+
+  - type: textarea
+    id: success-requirements
+    attributes:
+      label: Success requirements
+      description: Concrete, verifiable conditions that must hold for this feature to be considered done.
+      value: |
+        - [ ]
+        - [ ]
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Other approaches you evaluated (including doing nothing) and why they were rejected.
+      placeholder: |
+        - **Option A** — rejected because ...
+        - **Do nothing** — rejected because ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: notes
+    attributes:
+      label: Additional notes
+      description: Anything else — mockups, screenshots, open questions.
+    validations:
+      required: false
