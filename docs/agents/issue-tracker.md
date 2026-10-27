@@ -5,6 +5,7 @@ Issues and specs for this repo live as GitHub issues. Use the `gh` CLI for all o
 ## Conventions
 
 - **Create an issue**: `gh issue create --title "..." --body "..."`. Use a heredoc for multi-line bodies.
+- **Create a feature request**: every new feature follows `.github/ISSUE_TEMPLATE/FEATURE_REQUEST_TEMPLATE.yml`. `gh` can't fill issue forms, so mirror it by hand: title `feat: ...`, body with `### Motivation`, `### Background`, `### Scope` (in / out of scope), `### Success requirements` (checklist), `### Alternatives considered`, and optional `### Additional notes`. Run `gh issue create --label enhancement --label needs-triage --assignee emnul --project "emnul.dev" ...` unless the user specifies another assignee or project.
 - **Read an issue**: `gh issue view <number> --json number,title,body,labels,comments`.
 - **List issues**: `gh issue list --state open --json number,title,body,labels,comments --jq '[.[] | {number, title, body, labels: [.labels[].name], comments: [.comments[].body]}]'` with appropriate `--label` and `--state` filters.
 - **Make an issue a sub-issue of a parent**: `gh issue create --parent <parent> ...`, or `gh issue edit <parent> --add-sub-issue <child>` afterwards (`gh` 2.94+). Older `gh`: `gh api --method POST repos/<owner>/<repo>/issues/<parent>/sub_issues -F sub_issue_id=<child-db-id>` (database id, as in **Blocking** below). Without sub-issues, put `Part of #<parent>` at the top of the child body.
