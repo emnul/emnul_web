@@ -11,9 +11,8 @@ const isAstroCheck = process.env.ASTRO_CHECK !== undefined;
 
 export default defineConfig({
   site: "https://emnul.dev",
-  // Nothing persists across navigation (ADR 0001), so skip the adapter's default KV session binding.
   session: false,
-  // Optimize images at build time (ADR 0005) instead of through the Cloudflare Images binding.
+  // Optimize images at build time
   adapter:
     isVitest || isAstroCheck
       ? undefined
