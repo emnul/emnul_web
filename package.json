@@ -10,7 +10,7 @@
     "preview": "astro preview",
     "check": "ASTRO_CHECK=1 astro check",
     "lint": "eslint .",
-    "test": "vitest run --project unit",
+    "test": "vitest run",
     "prepare": "husky",
     "format": "prettier --write .",
     "format:check": "prettier --check ."
