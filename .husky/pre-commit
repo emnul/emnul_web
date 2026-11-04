@@ -1,4 +1,4 @@
-# Branch names follow https://conventionalbranch.org/ (plus staging). GitHub can't enforce it on this plan, so it runs first here.
+# Branch names follow https://conventionalbranch.org/ (plus staging)
 # Detached HEAD (rebase, bisect) has no branch name to check.
 pattern='^(main|master|develop|staging|(feature|feat|bugfix|fix|hotfix|release|chore|ai|copilot|cursor|claude|codex)/[a-z0-9]+(\.[a-z0-9]+)*(-[a-z0-9]+(\.[a-z0-9]+)*)*)$'
 if branch=$(git symbolic-ref --short -q HEAD) && ! printf '%s' "$branch" | grep -qE "$pattern"; then
@@ -9,5 +9,5 @@ if branch=$(git symbolic-ref --short -q HEAD) && ! printf '%s' "$branch" | grep 
 fi
 
 # Sequential: the Prettier and ESLint globs overlap, so parallel tasks would race on the same file.
-bunx lint-staged --concurrent false
-bun run check
+pnpm exec lint-staged --concurrent false
+pnpm run check
